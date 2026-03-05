@@ -1,219 +1,304 @@
 """
-LLM Client -- Claude primary, GPT-4o fallback.
+LLM Client — Claude API (primary), GPT-4o (fallback)
+=====================================================
+Used by every module that needs AI generation:
+  - paper_summariser (literature tab AI Summary button)
+  - knowledge_card_gen (materials engine)
+  - briefing_gen (briefing builder)
+  - biocompat_predictor (regulatory engine)
+  - assay_recommender (experimental design)
+  - swot_generator (business intelligence)
 
-Design principles:
-- Never blocks the UI thread. All calls go through StreamWorker (QThread).
-- Prompts are passed in by the caller -- this module is pure infrastructure.
-- Graceful degradation: if no API key is present, returns a clear error string
-  rather than raising. The UI can display this without crashing.
-- Streaming: chunks are emitted via Qt signals so the UI updates progressively.
+All prompts go through here. Rate limiting, retries,
+and fallback are handled centrally.
+
+Usage:
+    from ai_engine.llm_client import LLMClient
+    client = LLMClient()
+
+    # Simple call
+    response = client.complete(prompt="Summarise this abstract: ...")
+
+    # With system prompt
+    response = client.complete(
+        prompt="...",
+        system="You are a biomaterials expert...",
+        max_tokens=500
+    )
+
+    # Structured JSON output
+    data = client.complete_json(
+        prompt="Extract material properties as JSON...",
+        system="Return only valid JSON, no markdown."
+    )
 """
 
-from __future__ import annotations
+import json
+import logging
+import time
+from typing import Any, Dict, List, Optional
 
-import os
-from typing import Generator, Optional
+logger = logging.getLogger(__name__)
 
-from PyQt6.QtCore import QThread, pyqtSignal
+# ── Model constants ───────────────────────────────────────────────────────────
+
+CLAUDE_MODEL    = "claude-sonnet-4-20250514"
+GPT_FALLBACK    = "gpt-4o"
+MAX_RETRIES     = 3
+RETRY_DELAY     = 2.0   # seconds between retries
 
 
-def _get_anthropic():
-    try:
-        import anthropic
-        return anthropic
-    except ImportError:
-        return None
-
-def _get_openai():
-    try:
-        import openai
-        return openai
-    except ImportError:
-        return None
+class LLMError(Exception):
+    """Raised when all LLM attempts fail."""
+    pass
 
 
 class LLMClient:
     """
-    Thin wrapper around the Claude (and optionally GPT-4o) APIs.
+    Central AI client. Instantiate once per module or use the
+    module-level singleton get_client().
 
-    Usage (non-streaming, for quick calls):
-        client = LLMClient(anthropic_key="sk-...")
-        text = client.complete(system_prompt, user_prompt)
-
-    Usage (streaming, via QThread):
-        worker = client.stream_worker(system_prompt, user_prompt, tag="strategy")
-        worker.chunk.connect(my_slot)
-        worker.finished.connect(my_done_slot)
-        worker.error.connect(my_error_slot)
-        worker.start()
+    Config is read from data_manager config at init time.
+    Can also be constructed with explicit api_key for testing.
     """
 
-    CLAUDE_MODEL = "claude-sonnet-4-6"
-    GPT_MODEL = "gpt-4o"
-    MAX_TOKENS = 4096
+    def __init__(self, api_key: Optional[str] = None,
+                 fallback_key: Optional[str] = None):
+        self._claude_key  = api_key      or self._load_key("ANTHROPIC_API_KEY",  "openai_api_key")
+        self._openai_key  = fallback_key or self._load_key("OPENAI_API_KEY",     "openai_api_key")
+        self._last_call   = 0.0
+        self._min_gap     = 0.5   # seconds between calls — basic rate limit
 
-    def __init__(
-        self,
-        anthropic_key: Optional[str] = None,
-        openai_key: Optional[str] = None,
-        model: Optional[str] = None,
-    ):
-        self.anthropic_key = anthropic_key or os.getenv("ANTHROPIC_API_KEY", "")
-        self.openai_key = openai_key or os.getenv("OPENAI_API_KEY", "")
-        self.model = model or self.CLAUDE_MODEL
+    # ── Public API ────────────────────────────────────────────────────────────
 
-    @property
-    def claude_available(self) -> bool:
-        return bool(self.anthropic_key) and _get_anthropic() is not None
-
-    @property
-    def openai_available(self) -> bool:
-        return bool(self.openai_key) and _get_openai() is not None
-
-    @property
-    def any_available(self) -> bool:
-        return self.claude_available or self.openai_available
-
-    def status_message(self) -> str:
-        if self.claude_available:
-            return f"Claude ({self.model})"
-        if self.openai_available:
-            return "GPT-4o (fallback -- Claude key missing)"
-        return "No LLM available -- set ANTHROPIC_API_KEY or OPENAI_API_KEY"
-
-    # ------------------------------------------------------------------
-    # Synchronous completion (call from a worker thread, not the UI thread)
-    # ------------------------------------------------------------------
-
-    def complete(self, system_prompt: str, user_prompt: str) -> str:
-        if self.claude_available:
-            return self._claude_complete(system_prompt, user_prompt)
-        if self.openai_available:
-            return self._openai_complete(system_prompt, user_prompt)
-        return "[ERROR] No LLM API key configured. Set ANTHROPIC_API_KEY in your environment."
-
-    def _claude_complete(self, system_prompt: str, user_prompt: str) -> str:
-        anthropic = _get_anthropic()
-        try:
-            client = anthropic.Anthropic(api_key=self.anthropic_key)
-            message = client.messages.create(
-                model=self.model,
-                max_tokens=self.MAX_TOKENS,
-                system=system_prompt,
-                messages=[{"role": "user", "content": user_prompt}],
-            )
-            return message.content[0].text
-        except Exception as e:
-            return f"[ERROR] Claude API call failed: {e}"
-
-    def _openai_complete(self, system_prompt: str, user_prompt: str) -> str:
-        openai = _get_openai()
-        try:
-            client = openai.OpenAI(api_key=self.openai_key)
-            response = client.chat.completions.create(
-                model=self.GPT_MODEL,
-                max_tokens=self.MAX_TOKENS,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-            )
-            return response.choices[0].message.content
-        except Exception as e:
-            return f"[ERROR] OpenAI API call failed: {e}"
-
-    # ------------------------------------------------------------------
-    # Streaming -- returns a ready-to-start QThread worker
-    # ------------------------------------------------------------------
-
-    def stream_worker(
-        self,
-        system_prompt: str,
-        user_prompt: str,
-        tag: str = "",
-    ) -> "StreamWorker":
+    def complete(self,
+                 prompt: str,
+                 system: str = "",
+                 max_tokens: int = 1000,
+                 temperature: float = 0.3) -> str:
         """
-        Returns a StreamWorker. Connect signals before calling .start().
-
-        Signals:
-            chunk(tag, text_chunk)  -- each streamed token
-            finished(tag, full_text) -- on completion
-            error(tag, message)      -- on failure
+        Send a prompt, return the text response.
+        Tries Claude first, falls back to GPT-4o if Claude key unavailable.
+        Raises LLMError if both fail.
         """
-        return StreamWorker(self, system_prompt, user_prompt, tag)
+        if not prompt.strip():
+            raise ValueError("Prompt cannot be empty")
 
-    def _claude_stream(self, system_prompt: str, user_prompt: str) -> Generator[str, None, None]:
-        anthropic = _get_anthropic()
-        client = anthropic.Anthropic(api_key=self.anthropic_key)
-        with client.messages.stream(
-            model=self.model,
-            max_tokens=self.MAX_TOKENS,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_prompt}],
-        ) as stream:
-            for text in stream.text_stream:
-                yield text
+        if self._claude_key:
+            return self._call_claude(prompt, system, max_tokens, temperature)
+        elif self._openai_key:
+            logger.warning("No Claude key — falling back to GPT-4o")
+            return self._call_openai(prompt, system, max_tokens, temperature)
+        else:
+            raise LLMError(
+                "No API key configured. Add ANTHROPIC_API_KEY to your .env file.\n"
+                "See config/.env.template for setup instructions."
+            )
 
-    def _openai_stream(self, system_prompt: str, user_prompt: str) -> Generator[str, None, None]:
-        openai = _get_openai()
-        client = openai.OpenAI(api_key=self.openai_key)
-        stream = client.chat.completions.create(
-            model=self.GPT_MODEL,
-            max_tokens=self.MAX_TOKENS,
-            stream=True,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-        )
-        for chunk in stream:
-            delta = chunk.choices[0].delta.content
-            if delta:
-                yield delta
+    def complete_json(self,
+                      prompt: str,
+                      system: str = "Return only valid JSON. No markdown fences, no explanation.",
+                      max_tokens: int = 1500) -> Any:
+        """
+        Like complete() but parses the response as JSON.
+        Strips markdown fences if the model adds them.
+        Returns the parsed Python object (dict or list).
+        """
+        raw = self.complete(prompt=prompt, system=system,
+                            max_tokens=max_tokens, temperature=0.1)
+        return self._parse_json(raw)
 
+    def complete_with_history(self,
+                               messages: List[Dict[str, str]],
+                               system: str = "",
+                               max_tokens: int = 1000) -> str:
+        """
+        Multi-turn conversation. messages = [{"role": "user"|"assistant", "content": "..."}]
+        """
+        if self._claude_key:
+            return self._call_claude_messages(messages, system, max_tokens)
+        elif self._openai_key:
+            return self._call_openai_messages(messages, system, max_tokens)
+        else:
+            raise LLMError("No API key configured.")
 
-class StreamWorker(QThread):
-    """
-    QThread that streams an LLM response and emits Qt signals.
+    def is_available(self) -> bool:
+        """Returns True if at least one API key is configured."""
+        return bool(self._claude_key or self._openai_key)
 
-    Connect chunk/finished/error signals before calling .start().
-    tag is a free-form string the caller uses to route signals to the right UI widget.
-    """
+    def which_model(self) -> str:
+        """Returns the model that will be used."""
+        if self._claude_key:
+            return CLAUDE_MODEL
+        elif self._openai_key:
+            return f"{GPT_FALLBACK} (fallback)"
+        return "none"
 
-    chunk = pyqtSignal(str, str)      # (tag, text_chunk)
-    finished = pyqtSignal(str, str)   # (tag, full_text)
-    error = pyqtSignal(str, str)      # (tag, error_message)
+    # ── Claude implementation ─────────────────────────────────────────────────
 
-    def __init__(
-        self,
-        client: LLMClient,
-        system_prompt: str,
-        user_prompt: str,
-        tag: str = "",
-    ):
-        super().__init__()
-        self._client = client
-        self._system = system_prompt
-        self._user = user_prompt
-        self._tag = tag
+    def _call_claude(self, prompt: str, system: str,
+                     max_tokens: int, temperature: float) -> str:
+        messages = [{"role": "user", "content": prompt}]
+        return self._call_claude_messages(messages, system, max_tokens, temperature)
 
-    def run(self):
-        if not self._client.any_available:
-            self.error.emit(self._tag, self._client.status_message())
-            return
+    def _call_claude_messages(self, messages: List[Dict],
+                               system: str, max_tokens: int,
+                               temperature: float = 0.3) -> str:
+        import urllib.request
 
-        accumulated = []
+        self._rate_limit()
+
+        body: Dict[str, Any] = {
+            "model":      CLAUDE_MODEL,
+            "max_tokens": max_tokens,
+            "messages":   messages,
+        }
+        if system:
+            body["system"] = system
+
+        for attempt in range(1, MAX_RETRIES + 1):
+            try:
+                req = urllib.request.Request(
+                    "https://api.anthropic.com/v1/messages",
+                    data    = json.dumps(body).encode(),
+                    headers = {
+                        "Content-Type":      "application/json",
+                        "x-api-key":         self._claude_key,
+                        "anthropic-version": "2023-06-01",
+                    },
+                    method  = "POST",
+                )
+                with urllib.request.urlopen(req, timeout=60) as resp:
+                    data = json.loads(resp.read())
+                    return self._extract_claude_text(data)
+
+            except urllib.error.HTTPError as e:
+                body_text = e.read().decode()
+                logger.warning(f"Claude attempt {attempt} HTTP {e.code}: {body_text}")
+                if e.code in (429, 529):          # rate limit / overload
+                    time.sleep(RETRY_DELAY * attempt)
+                elif e.code == 401:
+                    raise LLMError("Invalid Claude API key. Check ANTHROPIC_API_KEY in .env")
+                elif attempt == MAX_RETRIES:
+                    raise LLMError(f"Claude API error {e.code}: {body_text}")
+            except Exception as e:
+                logger.warning(f"Claude attempt {attempt} failed: {e}")
+                if attempt == MAX_RETRIES:
+                    raise LLMError(f"Claude request failed: {e}")
+                time.sleep(RETRY_DELAY)
+
+        raise LLMError("Claude: max retries exceeded")
+
+    def _extract_claude_text(self, data: Dict) -> str:
+        """Pull text from Claude's response structure."""
+        content = data.get("content", [])
+        texts   = [block.get("text", "") for block in content
+                   if block.get("type") == "text"]
+        return "\n".join(texts).strip()
+
+    # ── OpenAI fallback ───────────────────────────────────────────────────────
+
+    def _call_openai(self, prompt: str, system: str,
+                     max_tokens: int, temperature: float) -> str:
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
+        return self._call_openai_messages(messages, "", max_tokens, temperature)
+
+    def _call_openai_messages(self, messages: List[Dict],
+                               system: str, max_tokens: int,
+                               temperature: float = 0.3) -> str:
+        import urllib.request
+
+        self._rate_limit()
+
+        full_messages = []
+        if system:
+            full_messages.append({"role": "system", "content": system})
+        full_messages.extend(messages)
+
+        body = {
+            "model":       GPT_FALLBACK,
+            "messages":    full_messages,
+            "max_tokens":  max_tokens,
+            "temperature": temperature,
+        }
+
+        for attempt in range(1, MAX_RETRIES + 1):
+            try:
+                req = urllib.request.Request(
+                    "https://api.openai.com/v1/chat/completions",
+                    data    = json.dumps(body).encode(),
+                    headers = {
+                        "Content-Type":  "application/json",
+                        "Authorization": f"Bearer {self._openai_key}",
+                    },
+                    method  = "POST",
+                )
+                with urllib.request.urlopen(req, timeout=60) as resp:
+                    data = json.loads(resp.read())
+                    return data["choices"][0]["message"]["content"].strip()
+
+            except urllib.error.HTTPError as e:
+                body_text = e.read().decode()
+                logger.warning(f"OpenAI attempt {attempt} HTTP {e.code}: {body_text}")
+                if e.code == 429:
+                    time.sleep(RETRY_DELAY * attempt)
+                elif attempt == MAX_RETRIES:
+                    raise LLMError(f"OpenAI API error {e.code}: {body_text}")
+            except Exception as e:
+                logger.warning(f"OpenAI attempt {attempt} failed: {e}")
+                if attempt == MAX_RETRIES:
+                    raise LLMError(f"OpenAI request failed: {e}")
+                time.sleep(RETRY_DELAY)
+
+        raise LLMError("OpenAI: max retries exceeded")
+
+    # ── Helpers ───────────────────────────────────────────────────────────────
+
+    def _rate_limit(self):
+        elapsed = time.time() - self._last_call
+        if elapsed < self._min_gap:
+            time.sleep(self._min_gap - elapsed)
+        self._last_call = time.time()
+
+    def _parse_json(self, raw: str) -> Any:
+        """Strip markdown fences and parse JSON."""
+        clean = raw.strip()
+        # Strip ```json ... ``` or ``` ... ```
+        if clean.startswith("```"):
+            lines = clean.split("\n")
+            # Remove first and last fence lines
+            inner = [l for l in lines if not l.strip().startswith("```")]
+            clean = "\n".join(inner).strip()
         try:
-            if self._client.claude_available:
-                gen = self._client._claude_stream(self._system, self._user)
-            else:
-                gen = self._client._openai_stream(self._system, self._user)
+            return json.loads(clean)
+        except json.JSONDecodeError as e:
+            raise LLMError(f"Model returned invalid JSON: {e}\nRaw: {raw[:300]}")
 
-            for text in gen:
-                accumulated.append(text)
-                self.chunk.emit(self._tag, text)
+    @staticmethod
+    def _load_key(env_var: str, config_field: str) -> Optional[str]:
+        """Try env var first, then config file."""
+        import os
+        val = os.getenv(env_var)
+        if val:
+            return val
+        try:
+            from utils.config import config
+            return config.get("api_keys", config_field) or None
+        except Exception:
+            return None
 
-            self.finished.emit(self._tag, "".join(accumulated))
 
-        except Exception as e:
-            self.error.emit(self._tag, str(e))
+# ── Module-level singleton ────────────────────────────────────────────────────
+
+_client: Optional[LLMClient] = None
+
+
+def get_client() -> LLMClient:
+    """Return the shared LLMClient instance."""
+    global _client
+    if _client is None:
+        _client = LLMClient()
+    return _client

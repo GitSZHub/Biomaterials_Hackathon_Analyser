@@ -6,7 +6,6 @@ qtawesome>=1.2.0
 # -- ToxMCP Suite (computational toxicology) -----------------------------------
 # Install each server individually. ADMETlab works with no API key.
 # CompTox requires a free EPA key: https://comptox.epa.gov/dashboard
-admetlab-mcp>=0.1.0          # ADMET prediction -- no key needed, start first
 comptox-mcp>=0.1.0           # EPA chemical hazard + ToxValDB (EPA_COMPTOX_API_KEY)
 aop-mcp>=0.1.0               # Adverse Outcome Pathways (no key)
 pbpk-mcp>=0.1.0              # PBPK simulation via OSP Suite (no key)

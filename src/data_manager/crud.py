@@ -64,16 +64,22 @@ def create_project(name: str, **kwargs) -> int:
     with db.connection() as conn:
         cur = conn.execute(
             """
-            INSERT INTO projects (name, target_tissue, clinical_indication,
-                resources_json, regulatory_class, markets)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO projects (name, description, target_tissue, clinical_indication,
+                regulatory_aim, regulatory_class, budget_tier, timeline_months,
+                focus_keywords, resources_json, markets)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 name,
-                kwargs.get("target_tissue"),
-                kwargs.get("clinical_indication"),
+                kwargs.get("description", ""),
+                kwargs.get("target_tissue", ""),
+                kwargs.get("clinical_indication", ""),
+                kwargs.get("regulatory_aim", ""),
+                kwargs.get("regulatory_class", ""),
+                kwargs.get("budget_tier", ""),
+                kwargs.get("timeline_months", 0),
+                kwargs.get("focus_keywords", ""),
                 _j(kwargs.get("resources")),
-                kwargs.get("regulatory_class"),
                 _j(kwargs.get("markets")),
             ),
         )

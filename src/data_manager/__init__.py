@@ -14,10 +14,12 @@ Usage in any module:
 """
 
 from .database import DatabaseManager, get_db
+from .project_context import ProjectContext
 from . import crud
 
 __all__ = [
     "DatabaseManager",
     "get_db",
+    "ProjectContext",
     "crud",
 ]

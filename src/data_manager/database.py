@@ -78,17 +78,23 @@ class DatabaseManager:
         statements = [
 
             # ── Projects ──────────────────────────────────────────────
+            # Columns aligned with ProjectContext dataclass in project_context.py
             """
             CREATE TABLE IF NOT EXISTS projects (
-                id              INTEGER PRIMARY KEY AUTOINCREMENT,
-                name            TEXT NOT NULL,
-                target_tissue   TEXT,
-                clinical_indication TEXT,
-                resources_json  TEXT,           -- JSON: available equipment/budget flags
-                regulatory_class TEXT,          -- I / II / III / ATMP / TBD
-                markets         TEXT,           -- JSON list of target markets
-                created         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                last_modified   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+                name                TEXT NOT NULL,
+                description         TEXT DEFAULT '',
+                target_tissue       TEXT DEFAULT '',
+                clinical_indication TEXT DEFAULT '',
+                regulatory_aim      TEXT DEFAULT '',   -- e.g. "CE Class IIb", "FDA 510(k)", "ATMP"
+                regulatory_class    TEXT DEFAULT '',   -- I / II / III / ATMP / TBD
+                budget_tier         TEXT DEFAULT '',   -- academic | startup | industry
+                timeline_months     INTEGER DEFAULT 0,
+                focus_keywords      TEXT DEFAULT '',   -- comma-separated
+                resources_json      TEXT,              -- JSON: available equipment/budget flags
+                markets             TEXT,              -- JSON list of target markets
+                created             TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_modified       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
             """,
 
@@ -443,6 +449,64 @@ class DatabaseManager:
                 modules_included_json   TEXT,
                 prompt_used             TEXT,
                 created_date            TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """,
+
+            # ── Paper authors (normalised rows, not JSON) ─────────────
+            """
+            CREATE TABLE IF NOT EXISTS paper_authors (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                paper_id    TEXT REFERENCES papers(pmid) ON DELETE CASCADE,
+                name        TEXT NOT NULL,
+                position    INTEGER DEFAULT 0,
+                is_corresponding INTEGER DEFAULT 0
+            )
+            """,
+
+            # ── Structured AI-extracted facts per paper ───────────────
+            """
+            CREATE TABLE IF NOT EXISTS paper_facts (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                paper_id        TEXT REFERENCES papers(pmid) ON DELETE CASCADE,
+                material_id     INTEGER REFERENCES materials(id) ON DELETE SET NULL,
+                cell_model      TEXT DEFAULT '',
+                organism        TEXT DEFAULT '',
+                concentration   TEXT DEFAULT '',
+                viability_pct   REAL,
+                stiffness_kpa   REAL,
+                key_finding     TEXT DEFAULT '',
+                limitations     TEXT DEFAULT '',
+                confidence      TEXT DEFAULT 'ai_extracted',
+                verified_at     TIMESTAMP,
+                created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """,
+
+            # ── Individual material property rows ─────────────────────
+            """
+            CREATE TABLE IF NOT EXISTS material_properties (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                material_id     INTEGER NOT NULL REFERENCES materials(id) ON DELETE CASCADE,
+                property_name   TEXT NOT NULL,
+                value_numeric   REAL,
+                value_text      TEXT DEFAULT '',
+                unit            TEXT DEFAULT '',
+                condition       TEXT DEFAULT '',
+                source_paper_id TEXT REFERENCES papers(pmid) ON DELETE SET NULL,
+                confidence      TEXT DEFAULT 'literature',
+                created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """,
+
+            # ── Generic API response cache with expiry ────────────────
+            """
+            CREATE TABLE IF NOT EXISTS api_cache (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                cache_key   TEXT NOT NULL UNIQUE,
+                endpoint    TEXT NOT NULL,
+                response    TEXT NOT NULL,
+                cached_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at  TIMESTAMP NOT NULL
             )
             """,
 
