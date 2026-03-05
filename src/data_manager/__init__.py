@@ -1,16 +1,23 @@
 """
-data_manager — SQLite-backed persistence layer for the Biomaterials Analyser.
+Data Manager Package
+====================
+Single import point for all database operations.
 
-Public surface:
-    from data_manager import db, ProjectContext
+Usage in any module:
+    from data_manager import get_db, crud
 
-    db: DatabaseManager  — singleton, call db.init(path) once at startup.
-    ProjectContext       — dataclass holding the active project's scope.
+    # Initialise (call once at app startup, safe to call multiple times)
+    get_db()
+
+    # Use CRUD helpers
+    from data_manager.crud import upsert_paper, list_researchers
 """
 
-from .database import DatabaseManager
-from .project_context import ProjectContext
+from .database import DatabaseManager, get_db
+from . import crud
 
-db: DatabaseManager = DatabaseManager()
-
-__all__ = ["db", "DatabaseManager", "ProjectContext"]
+__all__ = [
+    "DatabaseManager",
+    "get_db",
+    "crud",
+]
