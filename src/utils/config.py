@@ -27,7 +27,9 @@ class Config:
                 "ncbi_api_key": "",
                 "openai_api_key": "",
                 "materials_project_api_key": "",
-                "uspto_api_key": ""
+                "uspto_api_key": "",
+                "epa_comptox_api_key": "",
+                "anthropic_api_key": ""
             },
             "literature_search": {
                 "max_results_default": 100,
@@ -49,7 +51,17 @@ class Config:
                 "default_format": "pdf",
                 "include_images": True,
                 "include_citations": True
-            }
+            },
+            "tox_servers": {
+                "admet_port": 8082,
+                "comptox_port": 8083,
+                "aop_port": 8084,
+                "pbpk_port": 8085,
+                "auto_start_admet": True,
+                "auto_start_comptox": False,
+                "auto_start_aop": True,
+                "auto_start_pbpk": False
+            },
         }
         
         self._config = self.defaults.copy()
@@ -77,7 +89,9 @@ class Config:
             "NCBI_API_KEY": ["api_keys", "ncbi_api_key"],
             "OPENAI_API_KEY": ["api_keys", "openai_api_key"],
             "MATERIALS_PROJECT_API_KEY": ["api_keys", "materials_project_api_key"],
-            "USPTO_API_KEY": ["api_keys", "uspto_api_key"]
+            "USPTO_API_KEY": ["api_keys", "uspto_api_key"],
+            "EPA_COMPTOX_API_KEY": ["api_keys", "epa_comptox_api_key"],
+            "ANTHROPIC_API_KEY": ["api_keys", "anthropic_api_key"]
         }
         
         for env_var, config_path in env_mappings.items():
@@ -153,6 +167,33 @@ class Config:
     @property
     def max_search_results(self) -> int:
         return self.get("literature_search", "max_results_default") or 100
+    @property
+    def anthropic_api_key(self) -> str:
+        return self.get("api_keys", "anthropic_api_key") or ""
+
+    @property
+    def epa_comptox_api_key(self) -> str:
+        return self.get("api_keys", "epa_comptox_api_key") or ""
+
+    @property
+    def tox_server_port(self) -> dict:
+        return {
+            "admet": self.get("tox_servers", "admet_port") or 8082,
+            "comptox": self.get("tox_servers", "comptox_port") or 8083,
+            "aop": self.get("tox_servers", "aop_port") or 8084,
+            "pbpk": self.get("tox_servers", "pbpk_port") or 8085,
+        }
+
+    @property
+    def tox_auto_start(self) -> dict:
+        """Which ToxMCP servers to auto-start at app launch."""
+        return {
+            "admet": self.get("tox_servers", "auto_start_admet") or True,
+            "comptox": bool(self.epa_comptox_api_key),
+            "aop": self.get("tox_servers", "auto_start_aop") or True,
+            "pbpk": self.get("tox_servers", "auto_start_pbpk") or False,
+        }
+
 
 # Global configuration instance
 config = Config()

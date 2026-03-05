@@ -1845,3 +1845,466 @@ Post day-one:
 - Own IP strategy module
 - Own experimental data upload pipeline
 - PowerPoint export
+
+
+---
+
+## Tox Engine -- ToxMCP Integration
+
+### Overview
+
+The tox_engine/ module wraps the ToxMCP suite of MCP (Model Context Protocol)
+servers for computational toxicology. All servers run locally as HTTP JSON-RPC
+services. The app communicates with them via the MCPClient base class.
+
+ToxMCP paper: https://doi.org/10.64898/2026.02.06.703989
+GitHub: https://github.com/ToxMCP/
+
+### Servers
+
+| Server       | Package         | Port | Key Required        | Primary Use                             |
+|--------------|-----------------|------|---------------------|-----------------------------------------|
+| ADMETlab MCP | admetlab-mcp    | 8082 | No                  | ADMET prediction from SMILES            |
+| CompTox MCP  | comptox-mcp     | 8083 | Yes (EPA, free)     | Chemical hazard, ToxValDB, OPERA models |
+| AOP MCP      | aop-mcp         | 8084 | No                  | Adverse Outcome Pathway mapping         |
+| PBPK MCP     | pbpk-mcp        | 8085 | No                  | Drug PK simulation (OSP Suite)          |
+| O-QT MCP     | oqt-mcp         | 8086 | Windows + licensed  | QSAR read-across (post-hackathon only)  |
+
+### Module Map
+
+    src/tox_engine/
+    ├── __init__.py            exports ToxServerManager, MCPClient, MCPToolResult
+    ├── mcp_client.py          HTTP JSON-RPC 2.0 base client + MCPToolResult dataclass
+    ├── server_manager.py      subprocess lifecycle + health checks + port config
+    ├── admet_client.py        ADMETClient -- predict_admet, wash_molecule, render_structure
+    ├── comptox_client.py      CompToxClient -- lookup_by_name, get_hazard_profile, screen_material_components
+    ├── aop_client.py          AOPClient -- map_chemical_to_aops, search_aops, get_key_events_for_aop
+    ├── pbpk_client.py         PBPKClient -- load_model, run_simulation, sensitivity_analysis
+    ├── iso10993_assessor.py   ISO10993Assessor -- assess() builds full ISO 10993 evaluation
+    ├── biocompat_scorer.py    BiocCompatScorer -- score_material() returns 0-100 composite score
+    └── workers.py             QThread workers for all off-thread tox calls
+
+### Integration Points
+
+The tox_engine feeds into three existing modules:
+
+1. Regulatory tab -- ISO 10993 Assessor
+   ISO10993Assessor.assess(material, contact_type, duration, components)
+   Returns ISO10993Assessment: required tests, chemical flags, AOP concerns, narrative
+   Narrative auto-included in Briefing Builder regulatory section
+
+2. Materials Lab tab -- Biocompat Scorer
+   BiocCompatScorer.score_material(name, components, drug_smiles)
+   Returns BiocCompatScore: 0-100 score, confidence tier A/B/C, traffic light
+   Score shown on Knowledge Card alongside material properties
+
+3. Drug Delivery tab -- ADMET + PBPK
+   ADMETClient.predict_admet(smiles) for loaded drug molecules
+   PBPKClient.run_simulation(model_id) for release kinetics modelling
+
+### Startup Sequence
+
+On app launch (main.py):
+  1. ToxServerManager instantiated with port config from Config.tox_server_port
+  2. manager.start_all_available() called in background thread
+     - ADMETlab starts automatically (no key needed)
+     - AOP starts automatically (no key needed)
+     - CompTox starts only if EPA_COMPTOX_API_KEY is set
+     - PBPK starts only if user enables in settings
+  3. ServerHealthWorker polls every 30s and updates status bar
+  4. If a server is offline its tab features are greyed out with
+     an Install & Start prompt linking to setup instructions
+
+### Day-One Priority
+
+For hackathon MVP implement in this order:
+  1. ADMETlab (no key, works immediately) -- wire to Drug Delivery tab
+  2. AOP (no key) -- wire to Regulatory tab AOP Explorer subtab
+  3. BiocCompatScorer with ADMETlab + AOP data -- wire to Materials Lab Knowledge Card
+  4. ISO10993Assessor with AOP data only -- wire to Regulatory required tests
+  5. CompTox (after EPA key obtained) -- enriches all of the above
+
+### Environment Variables Added
+
+  EPA_COMPTOX_API_KEY   -- free at https://comptox.epa.gov/dashboard
+  ANTHROPIC_API_KEY     -- Claude API primary AI engine
+
+Both loaded by Config._load_env_vars() and accessible as
+config.epa_comptox_api_key and config.anthropic_api_key.
+
+---
+
+## Research Flow (Canonical)
+
+One active project per session. The team receives an industry question and works through
+the following steps in order. Each step feeds the next. Every analysis has an
+"Add to Briefing" button so findings accumulate as the team works.
+
+### Step 0 -- Project Creation
+Team pastes the raw industry question into New Project.
+Claude parses it into structured fields: target_tissue, application_type,
+patient_population, regulatory_target, drug_payload, material_class,
+research_phase, key_challenges, search_keywords.
+Low-confidence fields are highlighted for team review and editing.
+One confirmed project drives all subsequent module behaviour.
+
+### Step 1 -- Literature  (what do we know?)
+PubMed auto-searches using Claude-generated keywords from project context.
+Team scans abstracts, marks key papers, drops PDFs into the inbox.
+Claude extracts structured facts per paper: material, cell model, viability,
+key finding, limitations.
+Confirmed facts propagate to: Materials KB, Biocompat Scorer, Briefing.
+
+### Step 2 -- Researcher Network  (who are the key players?)
+Authors from found papers seed the network automatically.
+Team tracks researchers to monitor new output.
+Feeds into Briefing as "leading research groups" section.
+
+### Step 3 -- Materials Lab  (what material fits?)
+Topic tree pre-navigated to project material_class.
+Claude generates AI knowledge cards for candidate materials.
+Comparison view (radar charts) supports material selection.
+Fabrication tab shows manufacturing method compatibility.
+Biocompat score feeds into Regulatory tab.
+
+### Step 4 -- Bio Analysis  (what does the target tissue look like?)
+GEO and CELLxGENE auto-queried for target_tissue expression data.
+Transcriptomics, cell type composition, key pathways characterised.
+Sequencing advisor selects appropriate technology.
+Tissue interaction model informs experimental design.
+
+### Step 5 -- Drug Delivery  (if drug_payload is set)
+PubChem / ChEMBL auto-lookup from drug_payload field.
+ADMET toxicity screening via ToxMCP.
+PK release model curves (Level 1-3).
+Material-drug compatibility check.
+
+### Step 6 -- Experimental Design  (how do we prove it works?)
+Cell model and assay recommenders pre-filtered by target_tissue.
+Microscopy advisor for imaging strategy.
+DBTL tracker for synthetic biology design iterations.
+Outputs: experimental roadmap, recommended protocol list.
+Becomes the Methods section of the briefing.
+
+### Step 7 -- Synthetic Biology  (optional: living materials / gene therapy angle)
+iGEM Registry and SynBioHub searched by biological function.
+Circuit designer for genetic strategy planning.
+Living materials layer connects synbio design to scaffold.
+Relevant when team wants a biology-embedded differentiation angle.
+
+### Step 8 -- Regulatory  (what is the approval path?)
+Device auto-classified from application_type and regulatory_target.
+ISO 10993 required test matrix generated.
+Biocompat score from Materials Lab + ToxMCP feeds in.
+Pathway map (FDA / CE mark / ATMP) with milestone timeline.
+
+### Step 9 -- Business Intelligence  (is there a market?)
+Market size seeded by target_tissue + patient_population.
+Competitive landscape, patent white space, funding intelligence.
+Evidence-grounded SWOT generated from all collected data.
+Strategic one-page summary for pitch preparation.
+
+### Step 10 -- Briefing Builder  (synthesise everything)
+Team selects which modules to include.
+Mode toggle: Technical report vs Executive summary.
+Prompt editor shows the exact Claude prompt being used.
+One-click export: PDF or Markdown.
+
+### Summary
+frame -> literature -> biology -> material -> experiment -> regulatory -> business -> brief
+Each tab receives the ProjectContext object at construction and auto-loads its
+first search on showEvent (lazy loading -- no simultaneous API flood at project open).
+
+
+---
+
+## Module Relevance System
+
+Every module tab is always visible. Claude's question parsing outputs relevance flags
+that suggest which modules apply to the current project. The team can override any flag.
+
+### Relevance Flags (part of ProjectContext)
+
+relevant_modules: dict[str, bool]
+  literature     -- always True
+  researcher     -- always True
+  materials      -- always True
+  bio_analysis   -- True unless clearly irrelevant
+  drug_delivery  -- True only if drug_payload is present
+  experimental   -- almost always True
+  synbio         -- True only if living materials / gene therapy angle detected
+  regulatory     -- almost always True
+  business       -- almost always True
+  briefing       -- always True
+
+### Behaviour per module
+
+If relevant_modules[module] is False:
+  - Tab is still visible (no hidden tabs)
+  - Tab shows a dismissable banner: "[Module] not flagged as relevant for this
+    project. You can still use it."
+  - "Add to Briefing" button is disabled by default
+  - Briefing builder excludes the module unless user manually includes it
+
+If relevant_modules[module] is True:
+  - Tab loads normally on first visit (lazy)
+  - "Add to Briefing" button enabled
+  - Module included in briefing content selector by default
+
+### User override
+The team can flip any relevance flag from the project settings panel.
+Claude suggests -- humans decide. The raw question and Claude confidence
+scores are always visible so the team can see why a module was flagged.
+
+
+---
+
+## Simulation Module
+
+A top-level tab. Elevates the app from a research aggregator to a predictive
+modelling environment. Strong hackathon differentiator -- live parameter sweeps
+with instant visual feedback require no wet lab and demonstrate quantitative thinking.
+
+All models are ODE systems solved with scipy.integrate.odeint.
+Plots update in real time on every slider change (debounced, ~200ms).
+Every model output has an "Add to Briefing" button.
+
+### UI Structure
+
+Simulation tab
+  Model Library        -- browse and select pre-built simulation models
+  Parameter Panel      -- grouped sliders + numeric spinboxes per model
+  Live Plot            -- Matplotlib/Plotly canvas, updates on parameter change
+  Chain Builder        -- connect models in sequence (post-MVP)
+  Export               -- curve data as CSV, plot image to briefing
+
+### MVP Model Library
+
+1. Cell Proliferation on Scaffold
+   ODE: logistic growth coupled to scaffold degradation
+   Parameters: seeding density, growth rate, scaffold degradation constant,
+               carrying capacity, scaffold porosity
+   Output: cell number vs time + scaffold mass vs time (dual axis)
+   Context link: auto-seeds carrying capacity from Materials Lab scaffold properties
+
+2. Drug Release Kinetics
+   Models: zero-order, first-order, Korsmeyer-Peppas (n=0.5 diffusion, n=1 erosion)
+   Parameters: initial drug loading, release rate constant, diffusion exponent,
+               burst fraction
+   Output: cumulative release (%) vs time
+   Context link: auto-seeds drug from drug_payload field
+
+3. Gene Circuit Dynamics
+   ODE: Hill function activator/repressor kinetics
+   Represents consequence of CRISPR edit -- altered transcription factor
+   or protein level over time
+   Parameters: production rate, degradation rate, Hill coefficient,
+               activation threshold, initial condition
+   Output: protein/mRNA concentration vs time
+   Context link: synbio module genetic edit feeds initial condition
+
+4. Scaffold Diffusion (Fick's Law)
+   1D steady-state and transient diffusion-reaction
+   Parameters: diffusion coefficient, oxygen/glucose consumption rate,
+               scaffold thickness, surface concentration
+   Output: concentration profile across scaffold depth
+   Critical insight: identifies hypoxic core thickness for thick constructs
+   Context link: auto-seeds scaffold thickness from Materials Lab
+
+5. Tissue Inflammatory Response
+   Semi-empirical ODE: acute inflammation -> resolution -> integration
+   Parameters: material biocompatibility score, degradation rate,
+               vascularisation rate, foreign body response intensity
+   Output: inflammation index + integration index vs weeks post-implant
+   Context link: auto-seeds biocompat score from Regulatory/ToxMCP
+
+6. Metabolic Flux (simplified)
+   Altered gene expression -> changed enzyme levels -> pathway flux shift
+   Parameters: baseline flux, fold-change in enzyme from gene edit,
+               pathway connectivity (series vs parallel)
+   Output: relative flux through key metabolic nodes vs time
+   Connects to transcriptome/metabolome readout layer
+
+### Chained Simulation (post-MVP)
+
+The full example workflow:
+  Gene circuit ODE (CRISPR edit -> protein level change)
+    -> Metabolic flux model (protein affects enzyme -> flux shift)
+    -> Cell proliferation model (metabolic state affects growth rate)
+    -> Diffusion model (growing cell density increases oxygen demand)
+    -> Tissue response model (scaffold degradation + cell integration)
+
+Each model output feeds the next model's initial conditions.
+Chain Builder UI: drag-and-drop model sequence, wire output -> input parameter.
+
+### Integration with ProjectContext
+
+On project load, simulation tab reads:
+  drug_payload       -> pre-seeds Drug Release model
+  material_class     -> pre-seeds degradation constants where known
+  target_tissue      -> pre-seeds tissue response parameters from literature values
+  relevant_modules   -> "simulation" flag (default True unless question is purely
+                        computational/informatics with no physical system)
+
+### Technical Implementation Notes
+
+  scipy.integrate.odeint  -- ODE solver
+  numpy                   -- parameter arrays, curve data
+  matplotlib (embedded)   -- live plot canvas in PyQt6 via FigureCanvasQTAgg
+  QSlider + QDoubleSpinBox -- parameter controls, linked bidirectionally
+  QTimer debounce         -- 200ms delay before recompute on slider drag
+  All model classes inherit SimulationModel base class with:
+    parameters: dict[str, Parameter]  (name, min, max, default, unit, description)
+    run(t_span, params) -> SimulationResult
+    plot(result, ax)    -> annotated matplotlib axes
+
+
+---
+
+## Tab Structure Update (11 tabs)
+
+The Simulation tab is added as tab 8, before Regulatory.
+Full tab order:
+
+1.  Literature Analysis
+2.  Researcher Network
+3.  Materials Lab
+4.  Bio Analysis
+5.  Drug Delivery
+6.  Experimental Design
+7.  Synthetic Biology
+8.  Simulation
+9.  Regulatory
+10. Business Intelligence
+11. Briefing Builder
+
+Simulation sits between Synthetic Biology and Regulatory because:
+- It can consume synbio outputs (gene circuit -> protein level)
+- Its outputs (biocompat score, tissue response) feed Regulatory
+- It represents the "what will happen" answer before committing to a regulatory path
+
+Module map addition:
+src/simulation_engine/
+  base_model.py          NEW -- SimulationModel base class, Parameter dataclass,
+                                SimulationResult dataclass
+  cell_proliferation.py  NEW -- logistic growth + scaffold degradation ODE
+  drug_release.py        NEW -- zero-order / first-order / Korsmeyer-Peppas
+  gene_circuit.py        NEW -- Hill function activator/repressor ODE
+  diffusion.py           NEW -- 1D Fick diffusion-reaction
+  tissue_response.py     NEW -- inflammatory response + integration ODE
+  metabolic_flux.py      NEW -- simplified pathway flux model
+  chain_runner.py        NEW -- post-MVP: sequential model chaining
+
+
+---
+
+## Pathway Intervention Planner + Small Molecule by Target
+
+Both are subtabs within Bio Analysis, extending it from pure analysis into actionable
+intervention strategy. They are independently usable but connect to each other.
+
+### Bio Analysis tab -- updated subtab list
+
+  Transcriptomics          (GEO query, volcano, heatmap -- bulk)
+  Single Cell              (CELLxGENE, UMAP, clustering, diff abundance)
+  Sequencing Advisor       (technology selection)
+  Metabolomics             (pathway overlay, PCA/UMAP)
+  Multi-Omics              (MOFA, joint pathway enrichment)
+  Proteomics               (DDA/DIA, protein corona, STRING PPI)
+  Flow Cytometry           (panel design, population stats)
+  Tissue Interaction       (response timeline)
+  Intervention Planner     NEW -- pathway hit -> ranked intervention strategies
+  Target Lookup            NEW -- gene/protein -> small molecule modulators
+
+---
+
+### Intervention Planner (subtab)
+
+Input: a dysregulated pathway + direction (activated/suppressed) + key gene list.
+Receives this automatically from Pathway Analysis results, or user can enter manually.
+
+Evaluates three intervention categories per pathway node:
+
+GENETIC
+  - Essentiality check (do not suggest KO of essential genes)
+  - Editing strategy selection: KO / knockin / base edit / CRISPRi / CRISPRa
+    (CRISPRi/a preferred for tuning rather than elimination)
+  - Guide RNA feasibility score for key targets
+  - Delivery system options filtered by target_tissue from ProjectContext
+  - Links to Synthetic Biology tab for circuit design
+
+PHARMACOLOGICAL
+  - Calls Target Lookup for each druggable node in the pathway
+  - Filters by clinical precedent: approved > clinical trial > preclinical > predicted
+  - Druggability assessment per node (binding pocket evidence)
+  - Links to Drug Delivery tab for ADMET + PK modelling
+
+COMBINATORIAL
+  - Genetic edit + small molecule together (sensitisation strategies)
+  - Dual-target strategies from STRING PPI upstream regulator analysis
+  - Flags combinations with existing clinical evidence
+
+Ranking criteria per intervention:
+  1. Evidence level (clinical > preclinical > computational)
+  2. Target selectivity (off-target risk)
+  3. Delivery feasibility to target_tissue
+  4. Safety / toxicity flags (ToxMCP feed)
+  5. Patent novelty (white space signal from Business Intelligence)
+
+Output: ranked intervention table with columns:
+  Strategy | Target | Mechanism | Evidence Level | Delivery | Safety Flag | Links
+
+"Add to Briefing" exports ranked table + rationale narrative (Claude-generated).
+
+Backend modules:
+  bio_engine/pathway_intervention.py   NEW -- orchestration logic
+  bio_engine/target_druggability.py    NEW -- OpenTargets + UniProt druggability queries
+  bio_engine/crispr_advisor.py         NEW -- essentiality check, editing strategy logic
+                                              (guide RNA scoring via CRISPOR API or local)
+
+---
+
+### Target Lookup (subtab)
+
+Target-first small molecule search. Distinct from Drug Delivery > Drug Lookup which
+is compound-first (you know the drug). Here you know the gene/protein target and
+want to find what modulates it.
+
+Input: gene symbol or UniProt ID (e.g. VEGFR2, P35968, TGFB1)
+
+Queries (in parallel):
+  ChEMBL by target   -- all compounds with bioactivity data, IC50/Ki values,
+                        assay type, organism, confidence score
+  OpenTargets        -- approved drugs + clinical candidates for this target,
+                        disease indication, clinical phase
+  PubChem            -- compound structures, known activity annotations
+  DrugBank           -- approved drugs with PK parameters where available
+
+Output table columns:
+  Compound | Mode (activator/inhibitor) | Potency (IC50/Ki) | Clinical Stage |
+  Organism tested | Toxicity flag | Structure thumbnail
+
+Filters:
+  Mode: activator / inhibitor / all
+  Clinical stage: approved only / clinical / all
+  Organism: human / in vitro / all
+  Potency threshold: slider (nM range)
+
+"Add to Briefing" exports compound table for the named target.
+Clicking a compound opens its Drug Delivery > Drug Lookup entry (ADMET + PK).
+
+Backend modules:
+  bio_engine/target_lookup.py          NEW -- ChEMBL + OpenTargets + PubChem queries
+                                              by target identifier
+
+---
+
+### Data Sources Summary
+
+  OpenTargets Platform API   GraphQL, free, no key -- target-disease-drug associations
+  ChEMBL REST API            free, no key -- bioactivity by target
+  STRING API                 free, no key -- PPI, upstream regulator identification
+  UniProt REST API           free, no key -- druggability, protein function
+  PubChem PUG REST           free, no key -- compound lookup
+  CRISPOR                    web API or local -- guide RNA off-target scoring
+
