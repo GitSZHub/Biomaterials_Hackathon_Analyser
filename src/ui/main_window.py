@@ -8,7 +8,8 @@ from PyQt6.QtWidgets import (QMainWindow, QTabWidget, QVBoxLayout,
                              QMenuBar, QStatusBar, QFrame, QGridLayout,
                              QDialog, QFormLayout, QLineEdit, QComboBox,
                              QDialogButtonBox, QTextEdit, QFileDialog,
-                             QMessageBox)
+                             QMessageBox, QListWidget, QListWidgetItem,
+                             QAbstractItemView)
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QAction
 import qtawesome as qta
@@ -95,6 +96,51 @@ class _NewProjectDialog(QDialog):
 
     def notes(self) -> str:
         return self._notes_edit.toPlainText().strip()
+
+
+class _OpenProjectDialog(QDialog):
+    """Lists all saved projects and lets the user pick one."""
+
+    def __init__(self, projects: list, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Open Project")
+        self.setMinimumSize(520, 320)
+        self._selected: dict = {}
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel("Select a project to open:"))
+
+        self._list = QListWidget()
+        self._list.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self._list.itemDoubleClicked.connect(self._on_accept)
+        for p in projects:
+            name     = p.get("name", "Unnamed")
+            tissue   = p.get("target_tissue", "") or ""
+            scenario = p.get("regulatory_scenario", "") or ""
+            modified = (p.get("last_modified") or "")[:10]
+            text = f"{name}   [{tissue}  ·  Scenario {scenario}  ·  {modified}]"
+            item = QListWidgetItem(text)
+            item.setData(Qt.ItemDataRole.UserRole, p)
+            self._list.addItem(item)
+        if self._list.count():
+            self._list.setCurrentRow(0)
+        layout.addWidget(self._list)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(self._on_accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def _on_accept(self):
+        item = self._list.currentItem()
+        if item:
+            self._selected = item.data(Qt.ItemDataRole.UserRole)
+            self.accept()
+
+    def selected_project(self) -> dict:
+        return self._selected
 
 
 class MainWindow(QMainWindow):
@@ -418,7 +464,44 @@ class MainWindow(QMainWindow):
         self._refresh_stats()
 
     def open_project(self):
-        self.status_bar.showMessage("Open Project — not yet implemented.")
+        try:
+            from data_manager import crud
+            projects = crud.list_projects()
+        except Exception as e:
+            QMessageBox.warning(self, "Database error", str(e))
+            return
+        if not projects:
+            QMessageBox.information(self, "No projects",
+                                    "No saved projects found. Create one with New Project.")
+            return
+        dlg = _OpenProjectDialog(projects, self)
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return
+        project = dlg.selected_project()
+        if not project:
+            return
+
+        self._project_id = project.get("id", 1)
+        name     = project.get("name", "")
+        tissue   = project.get("target_tissue", "") or ""
+        scenario = project.get("regulatory_scenario", "") or ""
+
+        self.setWindowTitle(f"Biomaterials Hackathon Analyser — {name}")
+        self.status_bar.showMessage(
+            f"Opened: '{name}'  |  Tissue: {tissue}  |  Scenario: {scenario}"
+        )
+        try:
+            if tissue:
+                self.regulatory_tab._tissue_combo.setCurrentText(tissue)
+        except Exception:
+            pass
+        try:
+            if tissue or scenario:
+                self.experimental_tab.prefill(tissue=tissue, scenario=scenario)
+        except Exception:
+            pass
+        self._propagate_project_id()
+        self._refresh_stats()
 
     def save_project(self):
         self.status_bar.showMessage("Save Project — not yet implemented.")
