@@ -510,6 +510,21 @@ class DatabaseManager:
             )
             """,
 
+            # ── Search history ────────────────────────────────────────
+            """
+            CREATE TABLE IF NOT EXISTS search_history (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                project_id  INTEGER REFERENCES projects(id),
+                tab         TEXT NOT NULL,
+                query       TEXT NOT NULL,
+                filters_json TEXT,
+                result_count INTEGER DEFAULT 0,
+                searched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """,
+
+            "CREATE INDEX IF NOT EXISTS idx_search_history_tab ON search_history(tab, searched_at)",
+
             # ── Indexes ───────────────────────────────────────────────
             "CREATE INDEX IF NOT EXISTS idx_papers_year   ON papers(year)",
             "CREATE INDEX IF NOT EXISTS idx_papers_doi    ON papers(doi)",

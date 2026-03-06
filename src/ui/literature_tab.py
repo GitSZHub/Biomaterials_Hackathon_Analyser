@@ -147,7 +147,12 @@ class LiteratureTab(QWidget):
         super().__init__()
         self._papers = []   # current result set
         self._current_pmid = None
+        self._project_id: int = 1
+        self._last_query: str = ""
         self.init_ui()
+
+    def set_project_id(self, project_id: int) -> None:
+        self._project_id = project_id
 
     def init_ui(self):
         layout = QVBoxLayout(self)
@@ -242,7 +247,16 @@ class LiteratureTab(QWidget):
         btn_layout.addStretch()
         grid.addLayout(btn_layout, 3, 2, 1, 2)
 
+        # Row 4 — recent searches
+        grid.addWidget(QLabel("Recent:"), 4, 0)
+        self._recent_combo = QComboBox()
+        self._recent_combo.addItem("— select a previous search —")
+        self._recent_combo.setToolTip("Queries from previous sessions")
+        self._recent_combo.activated.connect(self._on_recent_selected)
+        grid.addWidget(self._recent_combo, 4, 1, 1, 3)
+
         search_layout.addLayout(grid)
+        self._load_recent_searches()
 
         # Progress bar + status
         self.progress_bar = QProgressBar()
@@ -417,6 +431,31 @@ class LiteratureTab(QWidget):
 
         layout.addWidget(splitter)
 
+    # ── Recent-search helpers ─────────────────────────────────────────
+
+    def _load_recent_searches(self):
+        """Populate the recent-searches dropdown from the database."""
+        try:
+            from data_manager import crud
+            searches = crud.get_recent_searches(tab="literature", limit=15)
+            self._recent_combo.clear()
+            self._recent_combo.addItem("— select a previous search —")
+            for s in searches:
+                query = s.get("query", "")
+                count = s.get("result_count", 0)
+                self._recent_combo.addItem(f"{query}  ({count} results)", userData=query)
+        except Exception:
+            pass
+
+    def _on_recent_selected(self, index: int):
+        """Fill the search box from a recent-search selection."""
+        if index <= 0:
+            return
+        query = self._recent_combo.itemData(index)
+        if query:
+            self.search_input.setText(query)
+            self._recent_combo.setCurrentIndex(0)
+
     # ── Search logic ──────────────────────────────────────────────────
 
     def perform_search(self):
@@ -428,6 +467,7 @@ class LiteratureTab(QWidget):
         self._set_searching(True)
         self.results_table.setRowCount(0)
         self._papers = []
+        self._last_query = query
 
         self._worker = PubMedSearchWorker(
             query          = query,
@@ -460,6 +500,13 @@ class LiteratureTab(QWidget):
     def _on_search_finished(self, count: int):
         self._set_searching(False)
         self.results_count.setText(f"{count} papers found")
+        try:
+            from data_manager import crud
+            crud.log_search("literature", self._last_query,
+                            result_count=count, project_id=self._project_id)
+            self._load_recent_searches()
+        except Exception:
+            pass
         if count == 0:
             self.status_label.setText("No results. Try broadening your query.")
             self.synthesize_btn.setEnabled(False)

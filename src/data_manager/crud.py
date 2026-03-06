@@ -732,6 +732,81 @@ def save_stakeholder_analysis(project_id: int, stakeholders: List, matrix: Dict)
         return cur.lastrowid
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Search history
+# ──────────────────────────────────────────────────────────────────────────────
+
+def log_search(tab: str, query: str, result_count: int = 0,
+               project_id: Optional[int] = None,
+               filters: Optional[Dict] = None) -> None:
+    """Record a search query for persistence across sessions."""
+    try:
+        db = get_db()
+        with db.connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO search_history (project_id, tab, query, filters_json, result_count)
+                VALUES (?,?,?,?,?)
+                """,
+                (project_id, tab, query, _j(filters), result_count),
+            )
+    except Exception:
+        pass  # Search logging is non-critical
+
+
+def get_recent_searches(tab: Optional[str] = None,
+                        project_id: Optional[int] = None,
+                        limit: int = 15) -> List[Dict]:
+    """Return recent searches, most recent first. Deduplicates by query text."""
+    try:
+        db = get_db()
+        with db.connection() as conn:
+            if tab and project_id:
+                rows = conn.execute(
+                    """
+                    SELECT query, result_count, searched_at, tab
+                    FROM search_history
+                    WHERE tab=? AND project_id=?
+                    GROUP BY query ORDER BY MAX(searched_at) DESC LIMIT ?
+                    """,
+                    (tab, project_id, limit),
+                ).fetchall()
+            elif tab:
+                rows = conn.execute(
+                    """
+                    SELECT query, result_count, searched_at, tab
+                    FROM search_history WHERE tab=?
+                    GROUP BY query ORDER BY MAX(searched_at) DESC LIMIT ?
+                    """,
+                    (tab, limit),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    """
+                    SELECT query, result_count, searched_at, tab
+                    FROM search_history
+                    GROUP BY query, tab ORDER BY MAX(searched_at) DESC LIMIT ?
+                    """,
+                    (limit,),
+                ).fetchall()
+        return _rows_to_dicts(rows)
+    except Exception:
+        return []
+
+
+def get_latest_project() -> Optional[Dict]:
+    """Return the most recently modified project, or None if no projects exist."""
+    try:
+        db = get_db()
+        with db.connection() as conn:
+            row = conn.execute(
+                "SELECT * FROM projects ORDER BY last_modified DESC LIMIT 1"
+            ).fetchone()
+        return _deserialise_json_fields(_row_to_dict(row), _PROJECT_JSON) if row else None
+    except Exception:
+        return None
+
+
 def get_stakeholder_analysis(project_id: int) -> Optional[Dict]:
     db = get_db()
     with db.connection() as conn:

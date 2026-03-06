@@ -5,7 +5,10 @@ Desktop application main interface with tabbed modules
 
 from PyQt6.QtWidgets import (QMainWindow, QTabWidget, QVBoxLayout,
                              QHBoxLayout, QWidget, QPushButton, QLabel,
-                             QMenuBar, QStatusBar, QFrame, QGridLayout)
+                             QMenuBar, QStatusBar, QFrame, QGridLayout,
+                             QDialog, QFormLayout, QLineEdit, QComboBox,
+                             QDialogButtonBox, QTextEdit, QFileDialog,
+                             QMessageBox)
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QAction
 import qtawesome as qta
@@ -23,6 +26,77 @@ from .tox_tab import ToxTab
 from .synbio_tab import SynBioTab
 
 
+class _NewProjectDialog(QDialog):
+    """Dialog to initialise a new project with basic context."""
+
+    _TISSUES = [
+        "Bone", "Cartilage", "Skin", "Cardiac", "Vascular",
+        "Neural", "Liver", "Kidney", "Lung", "Tendon/Ligament",
+        "Cornea", "Intervertebral disc", "Other",
+    ]
+    _SCENARIOS = [
+        ("A — Inert scaffold (Class I/II/III device)", "A"),
+        ("B — Scaffold + drug combination", "B"),
+        ("C — Scaffold + engineered living cells (ATMP)", "C"),
+        ("D — Engineered organism produces material (GMO manufacturing)", "D"),
+    ]
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("New Project")
+        self.setMinimumWidth(480)
+        layout = QVBoxLayout(self)
+
+        form = QFormLayout()
+
+        self._name_edit = QLineEdit()
+        self._name_edit.setPlaceholderText("e.g. GelMA Cartilage Scaffold")
+        form.addRow("Project name:", self._name_edit)
+
+        self._tissue_combo = QComboBox()
+        for t in self._TISSUES:
+            self._tissue_combo.addItem(t)
+        form.addRow("Target tissue:", self._tissue_combo)
+
+        self._scenario_combo = QComboBox()
+        for label, _ in self._SCENARIOS:
+            self._scenario_combo.addItem(label)
+        form.addRow("Regulatory scenario:", self._scenario_combo)
+
+        self._notes_edit = QTextEdit()
+        self._notes_edit.setPlaceholderText(
+            "Optional: key materials, clinical indication, team resources ...")
+        self._notes_edit.setMaximumHeight(80)
+        form.addRow("Notes:", self._notes_edit)
+
+        layout.addLayout(form)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(self._on_accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def _on_accept(self):
+        if not self._name_edit.text().strip():
+            QMessageBox.warning(self, "Required", "Enter a project name.")
+            return
+        self.accept()
+
+    def project_name(self) -> str:
+        return self._name_edit.text().strip()
+
+    def target_tissue(self) -> str:
+        return self._tissue_combo.currentText()
+
+    def regulatory_scenario(self) -> str:
+        return self._SCENARIOS[self._scenario_combo.currentIndex()][1]
+
+    def notes(self) -> str:
+        return self._notes_edit.toPlainText().strip()
+
+
 class MainWindow(QMainWindow):
     """Main application window with tabbed interface"""
 
@@ -30,11 +104,13 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Biomaterials Hackathon Analyser v1.0")
         self.setGeometry(100, 100, 1400, 900)
+        self._project_id: int = 1   # overwritten by _load_last_project
 
         self.init_ui()
         self.init_menu_bar()
         self.init_status_bar()
         self.setup_styling()
+        self._load_last_project()
 
     def init_ui(self):
         central_widget = QWidget()
@@ -264,18 +340,121 @@ class MainWindow(QMainWindow):
             self.status_bar.showMessage(
                 "Synthetic Biology: Scenario C cleared.")
 
-    # ── Stubs ─────────────────────────────────────────────────────────
+    # ── Project actions ───────────────────────────────────────────────
+    def _load_last_project(self):
+        """Restore the most recently modified project from the database."""
+        try:
+            from data_manager import crud
+            project = crud.get_latest_project()
+            if not project:
+                return
+            self._project_id = project.get("id", 1)
+            name     = project.get("name", "")
+            tissue   = project.get("target_tissue", "") or ""
+            scenario = project.get("regulatory_scenario", "") or ""
+            if name:
+                self.setWindowTitle(f"Biomaterials Hackathon Analyser — {name}")
+                self.status_bar.showMessage(
+                    f"Restored: '{name}'  |  Tissue: {tissue}  |  Scenario: {scenario}"
+                )
+            try:
+                if tissue:
+                    self.regulatory_tab._tissue_combo.setCurrentText(tissue)
+            except Exception:
+                pass
+            try:
+                if tissue or scenario:
+                    self.experimental_tab.prefill(tissue=tissue, scenario=scenario)
+            except Exception:
+                pass
+            self._propagate_project_id()
+        except Exception:
+            pass
+
+    def _propagate_project_id(self):
+        """Push current project ID to all tabs that log searches."""
+        try:
+            self.literature_tab.set_project_id(self._project_id)
+        except Exception:
+            pass
+
     def new_project(self):
-        self.status_bar.showMessage("Creating new project...")
+        dlg = _NewProjectDialog(self)
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return
+        name     = dlg.project_name()
+        tissue   = dlg.target_tissue()
+        scenario = dlg.regulatory_scenario()
+        notes    = dlg.notes()
+
+        # Persist to database
+        try:
+            from data_manager import crud
+            self._project_id = crud.create_project(
+                name=name,
+                target_tissue=tissue,
+                regulatory_scenario=scenario,
+                notes=notes,
+            )
+        except Exception:
+            pass
+
+        self._propagate_project_id()
+        self.setWindowTitle(f"Biomaterials Hackathon Analyser — {name}")
+        self.status_bar.showMessage(
+            f"Project '{name}' created  |  Tissue: {tissue}  |  Scenario: {scenario}"
+        )
+
+        # Prefill Regulatory + Experimental tabs with project context
+        try:
+            self.regulatory_tab._tissue_combo.setCurrentText(tissue)
+        except Exception:
+            pass
+        try:
+            self.experimental_tab.prefill(tissue=tissue, scenario=scenario)
+        except Exception:
+            pass
+
+        self._refresh_stats()
 
     def open_project(self):
-        self.status_bar.showMessage("Opening project...")
+        self.status_bar.showMessage("Open Project — not yet implemented.")
 
     def save_project(self):
-        self.status_bar.showMessage("Saving project...")
+        self.status_bar.showMessage("Save Project — not yet implemented.")
 
     def export_results(self):
-        self.status_bar.showMessage("Exporting results...")
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export Results", "hackathon_results.txt",
+            "Text files (*.txt);;All files (*)"
+        )
+        if not path:
+            return
+        try:
+            lines = [
+                "Biomaterials Hackathon Analyser — Export",
+                "=" * 50,
+                "",
+            ]
+            # Briefing content if available
+            try:
+                text = self.briefing_tab._output_box.toPlainText()
+                if text:
+                    lines += ["=== Briefing ===", text, ""]
+            except Exception:
+                pass
+            # Regulatory classification if available
+            try:
+                reg_text = self.regulatory_tab._result_display.toPlainText()
+                if reg_text:
+                    lines += ["=== Regulatory Classification ===", reg_text, ""]
+            except Exception:
+                pass
+            with open(path, "w", encoding="utf-8") as f:
+                f.write("\n".join(lines))
+            self.status_bar.showMessage(f"Results exported to {path}")
+        except Exception as e:
+            QMessageBox.warning(self, "Export failed", str(e))
 
     def open_settings(self):
         pass
