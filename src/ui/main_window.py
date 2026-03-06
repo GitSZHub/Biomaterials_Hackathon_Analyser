@@ -15,6 +15,11 @@ from .researcher_network_tab import ResearcherNetworkTab
 from .materials_tab import MaterialsTab
 from .business_tab import BusinessTab
 from .bio_analysis_tab import BioAnalysisTab
+from .drug_tab import DrugTab
+from .regulatory_tab import RegulatoryTab
+from .experimental_tab import ExperimentalTab
+from .briefing_tab import BriefingTab
+from .tox_tab import ToxTab
 
 
 class MainWindow(QMainWindow):
@@ -86,6 +91,14 @@ class MainWindow(QMainWindow):
         self.materials_tab    = MaterialsTab()
         self.business_tab     = BusinessTab()
         self.bio_tab          = BioAnalysisTab()
+        self.drug_tab         = DrugTab()
+        self.regulatory_tab   = RegulatoryTab()
+        self.experimental_tab = ExperimentalTab()
+        self.briefing_tab     = BriefingTab()
+        self.tox_tab          = ToxTab()
+
+        # Wire ToxTab -> RegulatoryTab so live MCP clients enrich ISO 10993 / biocompat
+        self.regulatory_tab.set_tox_tab(self.tox_tab)
 
         self.tab_widget.addTab(self.literature_tab,
                                qta.icon('fa.book'),         "Literature")
@@ -97,6 +110,16 @@ class MainWindow(QMainWindow):
                                qta.icon('fa.line-chart'),   "Business Intelligence")
         self.tab_widget.addTab(self.bio_tab,
                                qta.icon('fa.flask'),        "Bio Analysis")
+        self.tab_widget.addTab(self.drug_tab,
+                               qta.icon('fa.pills'),        "Drug Delivery")
+        self.tab_widget.addTab(self.regulatory_tab,
+                               qta.icon('fa.shield'),       "Regulatory")
+        self.tab_widget.addTab(self.experimental_tab,
+                               qta.icon('fa.flask'),        "Experimental Design")
+        self.tab_widget.addTab(self.tox_tab,
+                               qta.icon('fa.warning'),      "Toxicology")
+        self.tab_widget.addTab(self.briefing_tab,
+                               qta.icon('fa.star'),         "Briefing Generator")
 
         main_layout.addWidget(self.tab_widget)
 
@@ -209,6 +232,17 @@ class MainWindow(QMainWindow):
             }
             QTabBar::tab:hover { background: #f0f0f0; }
         """)
+
+    def closeEvent(self, event):
+        """Stop all MCP servers on app exit."""
+        try:
+            from .tox_tab import get_tox_manager
+            mgr = get_tox_manager()
+            if mgr is not None:
+                mgr.stop_all()
+        except Exception:
+            pass
+        super().closeEvent(event)
 
     # ── Stubs ─────────────────────────────────────────────────────────
     def new_project(self):
