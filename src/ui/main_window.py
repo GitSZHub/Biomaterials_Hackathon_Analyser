@@ -101,6 +101,10 @@ class MainWindow(QMainWindow):
 
         # Wire ToxTab -> RegulatoryTab so live MCP clients enrich ISO 10993 / biocompat
         self.regulatory_tab.set_tox_tab(self.tox_tab)
+        # Wire RegulatoryTab -> ExperimentalTab so classification prefills wizard
+        self.regulatory_tab.set_experimental_tab(self.experimental_tab)
+        # Wire BusinessTab + ExperimentalTab -> BriefingTab so context assembly sees live objects
+        self.briefing_tab.set_module_tabs(self.business_tab, self.experimental_tab)
 
         # Wire SynBio Scenario C -> RegulatoryTab notification
         self.synbio_tab.scenario_c_changed.connect(self._on_scenario_c_changed)

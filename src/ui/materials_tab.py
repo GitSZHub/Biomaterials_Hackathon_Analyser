@@ -15,6 +15,9 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QFont, QColor
 import qtawesome as qta
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # ── Background workers ────────────────────────────────────────────────────────
@@ -84,7 +87,7 @@ class MaterialsTab(QWidget):
         layout = QVBoxLayout(self)
         layout.setSpacing(6)
 
-        header = QLabel("🔬 Materials Lab")
+        header = QLabel("Materials Lab")
         header.setFont(QFont("Arial", 14, QFont.Weight.Bold))
         layout.addWidget(header)
 
@@ -503,6 +506,3 @@ class MaterialsTab(QWidget):
         except Exception as e:
             self.status_label.setText(f"Comparison error: {e}")
 
-
-import logging
-logger = logging.getLogger(__name__)

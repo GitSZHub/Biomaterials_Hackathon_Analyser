@@ -251,12 +251,15 @@ class MaterialsDB:
         """Save AI-generated knowledge card content back to the material record."""
         from data_manager import get_db
         import json
+        props = card.get("key_properties", card.get("properties", {}))
+        fab   = card.get("fabrication_compatibility", card.get("fabrication_compat", {}))
         with get_db().connection() as conn:
             conn.execute(
                 """UPDATE materials
-                   SET properties_json=?, ai_generated=1, last_reviewed=datetime('now')
+                   SET properties_json=?, fabrication_compat_json=?,
+                       ai_generated=1, last_reviewed=datetime('now')
                    WHERE id=?""",
-                (json.dumps(card.get("properties", {})), material_id)
+                (json.dumps(props), json.dumps(fab), material_id)
             )
         logger.info(f"Saved knowledge card for material id={material_id}")
 
@@ -298,22 +301,13 @@ class MaterialsDB:
     # ── Helpers ───────────────────────────────────────────────────────
 
     def _deserialise(self, m: Dict) -> Dict:
-        import json
         if not m:
             return m
-        for field in ("properties_json", "biocompat_scores_json",
-                      "fabrication_compat_json"):
-            if field in m and isinstance(m[field], str):
-                try:
-                    key = field.replace("_json", "")
-                    key = key.replace("biocompat_scores", "biocompat_scores")
-                    m[key] = json.loads(m[field])
-                except Exception:
-                    pass
-        # Friendlier aliases
-        m["properties"]         = m.get("properties_json_parsed") or \
-                                   self._try_parse(m.get("properties_json"))
+        # Friendlier aliases for JSON columns (may already be parsed dicts by crud layer)
+        m["properties"]         = self._try_parse(m.get("properties_json"))
         m["fabrication_compat"] = self._try_parse(m.get("fabrication_compat_json"))
+        # Alias "class" DB column to "material_class" for consistent access in UI
+        m["material_class"]     = m.get("class", "")
         return m
 
     @staticmethod

@@ -183,6 +183,11 @@ class ToxTab(QWidget):
     def _init_ui(self):
         layout = QVBoxLayout(self)
         layout.setSpacing(6)
+
+        header = QLabel("Toxicology")
+        header.setFont(QFont("Segoe UI", 14, QFont.Weight.Bold))
+        layout.addWidget(header)
+
         self._tabs = QTabWidget()
         self._tabs.addTab(self._build_server_tab(), qta.icon("fa5s.server"),    "Server Control")
         self._tabs.addTab(self._build_comptox_tab(), qta.icon("fa5s.flask"),    "CompTox")
@@ -631,8 +636,12 @@ class ToxTab(QWidget):
     def _start_all_available(self):
         if self._manager is None:
             return
-        for key in self._manager.available_servers:
-            self._start_server(key)
+        results = self._manager.start_all_available()
+        for key, started in results.items():
+            color = _AMBER if started else _GREY
+            if key in self._server_indicators:
+                self._server_indicators[key].setStyleSheet(f"color: {color};")
+            self._log(f"{key}: {'starting...' if started else 'skipped (no API key)'}")
 
     def _stop_all(self):
         if self._manager is None:
@@ -1072,7 +1081,12 @@ class ToxTab(QWidget):
 
             canvas = FigureCanvasQTAgg(fig)
 
-            # Remove placeholder, add canvas
+            # Remove any previous canvas from the layout before adding new one
+            for i in reversed(range(self._plot_layout.count())):
+                item = self._plot_layout.itemAt(i)
+                if item and item.widget() and item.widget() is not self._pk_plot_placeholder:
+                    item.widget().setParent(None)  # type: ignore[arg-type]
+
             self._pk_plot_placeholder.setVisible(False)
             self._plot_layout.addWidget(canvas)
         except ImportError:

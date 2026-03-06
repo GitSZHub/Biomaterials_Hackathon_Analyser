@@ -128,13 +128,31 @@ class ExperimentalTab(QWidget):
         self._worker: Optional[QThread] = None
         self._init_ui()
 
+    def prefill(self, tissue: str = "", scenario: str = "") -> None:
+        """
+        Pre-populate wizard inputs from another tab (e.g. regulatory tab).
+        Call from main_window after device classification.
+        """
+        if tissue:
+            tissues_lower = [t.lower() for t in self.TISSUES]
+            if tissue.lower() in tissues_lower:
+                self._tissue_combo.setCurrentIndex(tissues_lower.index(tissue.lower()))
+        if scenario:
+            scenario_codes = [code for _, code in self.SCENARIOS]
+            if scenario in scenario_codes:
+                self._scenario_combo.setCurrentIndex(scenario_codes.index(scenario))
+
     def _init_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
+        header = QLabel("Experimental Design")
+        header.setFont(QFont("Segoe UI", 14, QFont.Weight.Bold))
+        layout.addWidget(header)
+
         tabs = QTabWidget()
         tabs.addTab(self._build_wizard_tab(),    qta.icon('fa5s.map'),         "Design Wizard")
-        tabs.addTab(self._build_cell_tab(),      qta.icon('fa5.circle'),    "Cell Models")
+        tabs.addTab(self._build_cell_tab(),      qta.icon('fa5s.circle'),   "Cell Models")
         tabs.addTab(self._build_organism_tab(),  qta.icon('fa5s.paw'),         "Organism Models")
         tabs.addTab(self._build_dbtl_tab(),      qta.icon('fa5s.sync'),     "DBTL Tracker")
         tabs.addTab(self._build_ai_tab(),        qta.icon('fa5s.lightbulb'), "AI Advisor")

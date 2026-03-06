@@ -175,6 +175,7 @@ class BioAnalysisTab(QWidget):
         self._current_matrix   = None
         self._current_result   = None
         self._loaded_file_path: Optional[str] = None
+        self._geo_results: list = []          # cache of last search results
         self._search_worker: Optional[GeoSearchWorker]   = None
         self._download_worker: Optional[DownloadWorker]  = None
         self._deg_worker: Optional[DEGWorker]            = None
@@ -184,6 +185,10 @@ class BioAnalysisTab(QWidget):
     def _init_ui(self):
         layout = QVBoxLayout(self)
         layout.setSpacing(6)
+
+        header = QLabel("Bio Analysis")
+        header.setFont(QFont("Arial", 14, QFont.Weight.Bold))
+        layout.addWidget(header)
 
         # ── Matrigel caveat banner (always visible) ────────────────────────
         banner = QFrame()
@@ -257,7 +262,40 @@ class BioAnalysisTab(QWidget):
         )
         self._results_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._results_table.setAlternatingRowColors(True)
+        self._results_table.itemSelectionChanged.connect(self._on_dataset_selected)
         layout.addWidget(self._results_table)
+
+        # Dataset detail panel
+        detail_frame = QFrame()
+        detail_frame.setStyleSheet(
+            "QFrame { background: #f8f9fa; border: 1px solid #dee2e6; "
+            "border-radius: 6px; padding: 4px; }"
+        )
+        detail_layout = QVBoxLayout(detail_frame)
+        detail_layout.setContentsMargins(8, 6, 8, 6)
+        detail_layout.setSpacing(4)
+
+        detail_top = QHBoxLayout()
+        self._detail_meta = QLabel("Select a dataset to preview details.")
+        self._detail_meta.setStyleSheet("color: #495057; font-size: 11px;")
+        self._detail_meta.setWordWrap(True)
+        detail_top.addWidget(self._detail_meta, 1)
+
+        self._open_geo_btn = QPushButton("Open in GEO")
+        self._open_geo_btn.setIcon(qta.icon("fa5s.external-link-alt"))
+        self._open_geo_btn.setEnabled(False)
+        self._open_geo_btn.clicked.connect(self._open_selected_in_geo)
+        detail_top.addWidget(self._open_geo_btn)
+
+        detail_layout.addLayout(detail_top)
+
+        self._detail_summary = QTextEdit()
+        self._detail_summary.setReadOnly(True)
+        self._detail_summary.setMaximumHeight(80)
+        self._detail_summary.setPlaceholderText("Dataset summary will appear here...")
+        self._detail_summary.setStyleSheet("font-size: 11px; background: transparent; border: none;")
+        detail_layout.addWidget(self._detail_summary)
+        layout.addWidget(detail_frame)
 
         # Download controls
         dl_layout = QHBoxLayout()
@@ -448,6 +486,7 @@ class BioAnalysisTab(QWidget):
         self._search_worker.start()
 
     def _on_search_results(self, results: list):
+        self._geo_results = results
         self._search_status.setText(f"Found {len(results)} dataset(s).")
         self._results_table.setRowCount(0)
         for ds in results:
@@ -461,6 +500,34 @@ class BioAnalysisTab(QWidget):
 
     def _on_search_error(self, msg: str):
         self._search_status.setText(f"Search failed: {msg}")
+
+    def _on_dataset_selected(self):
+        row = self._results_table.currentRow()
+        if row < 0 or row >= len(self._geo_results):
+            self._detail_meta.setText("Select a dataset to preview details.")
+            self._detail_summary.clear()
+            self._open_geo_btn.setEnabled(False)
+            return
+        ds = self._geo_results[row]
+        gse  = ds.get("gse_id", "")
+        tissue = ds.get("tissue", "") or "unknown tissue"
+        n    = ds.get("sample_count", "?")
+        pmids = ds.get("pubmed_ids", [])
+        pmid_str = "  PubMed: " + ", ".join(pmids[:3]) if pmids else ""
+        self._detail_meta.setText(
+            f"{gse}  |  {tissue}  |  {n} samples{pmid_str}"
+        )
+        self._detail_summary.setPlainText(ds.get("summary", "") or "No summary available.")
+        self._open_geo_btn.setEnabled(bool(gse))
+
+    def _open_selected_in_geo(self):
+        row = self._results_table.currentRow()
+        if row < 0 or row >= len(self._geo_results):
+            return
+        gse = self._geo_results[row].get("gse_id", "")
+        if gse:
+            import webbrowser
+            webbrowser.open(f"https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc={gse}")
 
     def _download_selected(self):
         row = self._results_table.currentRow()

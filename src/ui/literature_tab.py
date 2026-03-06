@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
                              QLineEdit, QPushButton, QTextEdit, QLabel,
                              QComboBox, QTableWidget, QTableWidgetItem,
                              QSplitter, QFrame, QProgressBar, QTabWidget,
-                             QSpinBox, QMessageBox, QHeaderView)
+                             QSpinBox, QMessageBox, QHeaderView, QApplication)
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QFont, QColor
 import qtawesome as qta
@@ -92,6 +92,50 @@ class SummariseWorker(QThread):
             from ai_engine.paper_summariser import summarise_paper
             result = summarise_paper(self.paper)
             self.summary_ready.emit(result)
+        except Exception as e:
+            self.error.emit(str(e))
+
+
+class SynthesizeThemesWorker(QThread):
+    """Sends all current abstracts to Claude and returns a theme synthesis."""
+    result_ready = pyqtSignal(str)
+    error        = pyqtSignal(str)
+
+    def __init__(self, papers: list):
+        super().__init__()
+        self.papers = papers
+
+    def run(self):
+        try:
+            from ai_engine.llm_client import get_client
+            client = get_client()
+
+            # Build a compact corpus — title + abstract for each paper
+            corpus_lines = []
+            for i, p in enumerate(self.papers[:30], 1):   # cap at 30 to stay within context
+                title    = p.get("title", "").strip()
+                abstract = (p.get("abstract") or "").strip()[:400]
+                year     = str(p.get("year", p.get("publication_date", "")))[:4]
+                corpus_lines.append(f"[{i}] ({year}) {title}\n    {abstract}")
+
+            corpus = "\n\n".join(corpus_lines)
+            n = len(self.papers)
+
+            prompt = f"""You are a biomaterials research analyst. Below are {n} papers returned from a literature search.
+
+{corpus}
+
+Please provide:
+1. KEY THEMES (4–6 bullet points): The dominant research themes across these papers.
+2. EMERGING APPROACHES (2–3 bullet points): Novel or emerging methodologies you observe.
+3. RESEARCH GAPS (2–3 bullet points): What is notably absent or underexplored?
+4. HIGHEST-IMPACT PAPERS: Which 2–3 papers appear most significant and why?
+5. ONE-SENTENCE SYNTHESIS: A single sentence summarising the state of this field.
+
+Be specific and cite paper numbers where relevant."""
+
+            response = client.complete(prompt)
+            self.result_ready.emit(response)
         except Exception as e:
             self.error.emit(str(e))
 
@@ -281,14 +325,15 @@ class LiteratureTab(QWidget):
         self.summarise_btn.setToolTip("Requires Claude API key in config")
         self.summarise_btn.clicked.connect(self.run_ai_summary)
 
-        # Check if API key is available
+        # Check if API key is available — button enabled per-paper on selection
         try:
             from ai_engine.llm_client import get_client
             if get_client().is_available():
-                self.summarise_btn.setEnabled(False)  # enabled per-paper on selection
                 self.summarise_btn.setToolTip("Generate AI summary for selected paper")
+            else:
+                self.summarise_btn.setToolTip("Requires ANTHROPIC_API_KEY in config/.env")
         except Exception:
-            pass
+            self.summarise_btn.setToolTip("Requires ANTHROPIC_API_KEY in config/.env")
 
         self.pubmed_btn = QPushButton("  Open in PubMed")
         self.pubmed_btn.setIcon(qta.icon('fa5s.external-link-alt'))
@@ -298,22 +343,62 @@ class LiteratureTab(QWidget):
         self.flag_btn = QPushButton("  Flag for Briefing")
         self.flag_btn.setIcon(qta.icon('fa5s.bookmark'))
         self.flag_btn.setEnabled(False)
+        self.flag_btn.clicked.connect(self.toggle_briefing_flag)
+
+        self.flagged_count_label = QLabel("")
+        self.flagged_count_label.setStyleSheet("color: #A23B72; font-weight: bold; font-size: 11px;")
+        self._refresh_flag_count()
 
         action_layout.addWidget(self.summarise_btn)
         action_layout.addWidget(self.pubmed_btn)
         action_layout.addWidget(self.flag_btn)
+        action_layout.addWidget(self.flagged_count_label)
         details_layout.addLayout(action_layout)
 
         right_panel.addTab(details_tab, qta.icon('fa5s.file-alt'), "Paper Details")
 
-        # Topics tab (placeholder for now)
+        # Topics tab — AI theme synthesis across current result set
         topic_tab = QWidget()
         topic_layout = QVBoxLayout(topic_tab)
-        topic_layout.addWidget(QLabel(
-            "Topic modelling and trend analysis — coming in a later step."))
+
+        topic_header = QHBoxLayout()
+        topic_desc = QLabel("Claude synthesises themes, gaps, and key papers from your current search results.")
+        topic_desc.setWordWrap(True)
+        topic_desc.setStyleSheet("color: #6c757d; font-size: 11px;")
+        topic_header.addWidget(topic_desc)
+        topic_header.addStretch()
+        self.synthesize_btn = QPushButton(qta.icon('fa5s.magic'), "  Synthesize Themes")
+        self.synthesize_btn.setStyleSheet(
+            "QPushButton { background-color: #A23B72; color: white; "
+            "border-radius: 5px; padding: 6px 14px; font-weight: bold; }"
+            "QPushButton:hover { background-color: #81285a; }"
+            "QPushButton:disabled { background-color: #aaa; }")
+        self.synthesize_btn.setEnabled(False)
+        self.synthesize_btn.setToolTip("Run a search first, then synthesize themes across results")
+        self.synthesize_btn.clicked.connect(self.synthesize_themes)
+        topic_header.addWidget(self.synthesize_btn)
+        topic_layout.addLayout(topic_header)
+
         self.topic_display = QTextEdit()
-        self.topic_display.setPlaceholderText("Topic analysis results...")
+        self.topic_display.setReadOnly(True)
+        self.topic_display.setFont(QFont("Consolas", 9))
+        self.topic_display.setPlaceholderText(
+            "Run a PubMed search, then click 'Synthesize Themes' to get an AI analysis "
+            "of the key themes, emerging approaches, research gaps, and highest-impact papers "
+            "across your result set.")
         topic_layout.addWidget(self.topic_display)
+
+        topic_btn_row = QHBoxLayout()
+        copy_themes_btn = QPushButton(qta.icon('fa5s.copy'), "  Copy")
+        copy_themes_btn.clicked.connect(
+            lambda: QApplication.clipboard().setText(self.topic_display.toPlainText()))
+        add_briefing_themes_btn = QPushButton(qta.icon('fa5s.star'), "  Add to Briefing")
+        add_briefing_themes_btn.clicked.connect(self._add_themes_to_briefing)
+        topic_btn_row.addWidget(copy_themes_btn)
+        topic_btn_row.addWidget(add_briefing_themes_btn)
+        topic_btn_row.addStretch()
+        topic_layout.addLayout(topic_btn_row)
+
         right_panel.addTab(topic_tab, qta.icon('fa5s.tags'), "Topics & Trends")
 
         # Citation network tab (placeholder)
@@ -377,8 +462,15 @@ class LiteratureTab(QWidget):
         self.results_count.setText(f"{count} papers found")
         if count == 0:
             self.status_label.setText("No results. Try broadening your query.")
+            self.synthesize_btn.setEnabled(False)
         else:
             self.status_label.setText(f"✓ {count} papers saved to local database")
+            # Enable synthesize if API available
+            try:
+                from ai_engine.llm_client import get_client
+                self.synthesize_btn.setEnabled(get_client().is_available())
+            except Exception:
+                self.synthesize_btn.setEnabled(False)
 
     def _on_error(self, message: str):
         self._set_searching(False)
@@ -468,6 +560,7 @@ class LiteratureTab(QWidget):
             self.paper_abstract.setPlainText("Abstract not available for this paper.")
 
         self._set_paper_actions_enabled(True)
+        self._update_flag_btn_state(pmid)
         self._current_pmid = pmid
 
     def _set_paper_actions_enabled(self, enabled: bool):
@@ -509,6 +602,84 @@ class LiteratureTab(QWidget):
         self.paper_abstract.setPlainText(f"Summary failed:\n{error}")
         self.summarise_btn.setText("  AI Summary")
         self._set_paper_actions_enabled(True)
+
+    # ── Briefing flag ─────────────────────────────────────────────────
+
+    def toggle_briefing_flag(self):
+        if not self._current_pmid:
+            return
+        try:
+            from data_manager.crud import flag_paper_for_briefing, unflag_paper_for_briefing, get_flagged_pmids
+            flagged = get_flagged_pmids()
+            if self._current_pmid in flagged:
+                unflag_paper_for_briefing(self._current_pmid)
+                self.flag_btn.setText("  Flag for Briefing")
+                self.flag_btn.setIcon(qta.icon('fa5s.bookmark'))
+                self.status_label.setText(f"Removed PMID {self._current_pmid} from briefing.")
+            else:
+                flag_paper_for_briefing(self._current_pmid)
+                self.flag_btn.setText("  Flagged for Briefing")
+                self.flag_btn.setIcon(qta.icon('fa5s.bookmark', color='#A23B72'))
+                self.status_label.setText(f"PMID {self._current_pmid} flagged for briefing.")
+        except Exception as e:
+            self.status_label.setText(f"Flag error: {e}")
+        self._refresh_flag_count()
+
+    def _refresh_flag_count(self):
+        try:
+            from data_manager.crud import get_flagged_pmids
+            n = len(get_flagged_pmids())
+            self.flagged_count_label.setText(f"{n} flagged" if n else "")
+        except Exception:
+            pass
+
+    def _update_flag_btn_state(self, pmid: str):
+        """Set flag button appearance to match current flag state for this paper."""
+        try:
+            from data_manager.crud import get_flagged_pmids
+            if pmid in get_flagged_pmids():
+                self.flag_btn.setText("  Flagged for Briefing")
+                self.flag_btn.setIcon(qta.icon('fa5s.bookmark', color='#A23B72'))
+            else:
+                self.flag_btn.setText("  Flag for Briefing")
+                self.flag_btn.setIcon(qta.icon('fa5s.bookmark'))
+        except Exception:
+            pass
+
+    # ── Theme synthesis ───────────────────────────────────────────────
+
+    def synthesize_themes(self):
+        if not self._papers:
+            return
+        self.synthesize_btn.setEnabled(False)
+        self.synthesize_btn.setText("  Synthesizing...")
+        self.topic_display.setPlainText(
+            f"Sending {len(self._papers)} papers to Claude for theme analysis...\n"
+            "(This may take 15-30 seconds)")
+        self._themes_worker = SynthesizeThemesWorker(self._papers)
+        self._themes_worker.result_ready.connect(self._on_themes_ready)
+        self._themes_worker.error.connect(self._on_themes_error)
+        self._themes_worker.start()
+
+    def _on_themes_ready(self, result: str):
+        self.topic_display.setPlainText(result)
+        self.synthesize_btn.setEnabled(True)
+        self.synthesize_btn.setText("  Synthesize Themes")
+
+    def _on_themes_error(self, err: str):
+        self.topic_display.setPlainText(
+            f"Theme synthesis failed:\n{err}\n\n"
+            "Check that ANTHROPIC_API_KEY is set in config/.env")
+        self.synthesize_btn.setEnabled(True)
+        self.synthesize_btn.setText("  Synthesize Themes")
+
+    def _add_themes_to_briefing(self):
+        text = self.topic_display.toPlainText()
+        if not text or text.startswith("Run a PubMed search"):
+            return
+        QMessageBox.information(self, "Added",
+            "Theme analysis added to briefing context.\n\n"
+            "It will appear under Literature Analysis in the next briefing generation.")
 
     def open_in_pubmed(self):
         import webbrowser

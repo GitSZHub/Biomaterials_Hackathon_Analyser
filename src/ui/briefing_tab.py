@@ -146,10 +146,19 @@ class BriefingTab(QWidget):
         self._roadmap_obj = roadmap
         self._dbtl_obj    = dbtl
 
+    def set_module_tabs(self, business_tab=None, experimental_tab=None) -> None:
+        """
+        Wire in other tab instances so context assembly can pull their live objects
+        (SWOT, roadmap, DBTL) at generation time rather than at construction time.
+        """
+        self._business_tab    = business_tab
+        self._experimental_tab = experimental_tab
+
     # ── UI construction ────────────────────────────────────────────────────────
 
     def _init_ui(self):
         self._swot_obj = self._roadmap_obj = self._dbtl_obj = None
+        self._business_tab = self._experimental_tab = None
 
         root = QHBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -368,11 +377,11 @@ class BriefingTab(QWidget):
             self._snap_label.setText("briefing_engine not available.")
             return
         self._snap_label.setText("Loading...")
-        worker = ContextWorker(
-            swot=self._swot_obj,
-            roadmap=self._roadmap_obj,
-            dbtl=self._dbtl_obj,
-        )
+        # Pull live objects from wired tabs if available, fall back to manually set ones
+        swot    = getattr(self._business_tab,     "_swot",    self._swot_obj)
+        roadmap = getattr(self._experimental_tab, "_roadmap", self._roadmap_obj)
+        dbtl    = getattr(self._experimental_tab, "_dbtl",    self._dbtl_obj)
+        worker = ContextWorker(swot=swot, roadmap=roadmap, dbtl=dbtl)
         worker.done.connect(self._on_context_ready)
         self._ctx_worker = worker
         worker.start()
@@ -442,6 +451,8 @@ class BriefingTab(QWidget):
 
     def _generate_with_edited_context(self):
         """Generate using the text in the prompt edit pane as the full context override."""
+        if not _ENGINE_OK:
+            return
         if self._context is None:
             self._context = BriefingContext(project_name="Manual context")
         self._context.user_context = self._prompt_edit.toPlainText()

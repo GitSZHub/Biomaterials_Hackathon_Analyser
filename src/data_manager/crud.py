@@ -230,6 +230,67 @@ def add_annotation(paper_id: str, project_id: int, annotation_type: str,
         return cur.lastrowid
 
 
+def flag_paper_for_briefing(pmid: str, project_id: Optional[int] = None) -> None:
+    """Mark a paper as flagged for inclusion in the briefing. Idempotent.
+
+    project_id defaults to None — avoids FK failure when no project has been created yet.
+    Falls back to the lowest existing project id if one exists.
+    """
+    db = get_db()
+    with db.connection() as conn:
+        # Resolve project_id safely — use first project if available, else NULL
+        if project_id is None:
+            row = conn.execute("SELECT id FROM projects ORDER BY id LIMIT 1").fetchone()
+            project_id = row["id"] if row else None
+
+        conn.execute(
+            "DELETE FROM paper_annotations WHERE paper_id=? AND annotation_type='briefing_flag'",
+            (pmid,),
+        )
+        conn.execute(
+            """
+            INSERT INTO paper_annotations (paper_id, project_id, annotation_type, content_json)
+            VALUES (?, ?, 'briefing_flag', '{}')
+            """,
+            (pmid, project_id),
+        )
+
+
+def unflag_paper_for_briefing(pmid: str) -> None:
+    """Remove briefing flag from a paper."""
+    db = get_db()
+    with db.connection() as conn:
+        conn.execute(
+            "DELETE FROM paper_annotations WHERE paper_id=? AND annotation_type='briefing_flag'",
+            (pmid,),
+        )
+
+
+def get_flagged_pmids() -> set:
+    """Return the set of PMIDs currently flagged for briefing."""
+    db = get_db()
+    with db.connection() as conn:
+        rows = conn.execute(
+            "SELECT DISTINCT paper_id FROM paper_annotations WHERE annotation_type='briefing_flag'"
+        ).fetchall()
+    return {row["paper_id"] for row in rows}
+
+
+def get_flagged_papers() -> List[Dict]:
+    """Return full paper records for all briefing-flagged papers, newest first."""
+    db = get_db()
+    with db.connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT p.* FROM papers p
+            JOIN paper_annotations pa ON p.pmid = pa.paper_id
+            WHERE pa.annotation_type = 'briefing_flag'
+            ORDER BY p.year DESC
+            """
+        ).fetchall()
+    return [_deserialise_json_fields(_row_to_dict(r), _PAPER_JSON) for r in rows]
+
+
 def get_annotations(paper_id: str, project_id: Optional[int] = None) -> List[Dict]:
     db = get_db()
     with db.connection() as conn:
@@ -292,11 +353,22 @@ def list_researchers(group_id: Optional[int] = None) -> List[Dict]:
     with db.connection() as conn:
         if group_id:
             rows = conn.execute(
-                "SELECT * FROM researchers WHERE group_id=? ORDER BY name", (group_id,)
+                """
+                SELECT r.*, rg.name as group_name
+                FROM researchers r
+                LEFT JOIN researcher_groups rg ON r.group_id = rg.id
+                WHERE r.group_id=?
+                ORDER BY r.name
+                """, (group_id,)
             ).fetchall()
         else:
             rows = conn.execute(
-                "SELECT * FROM researchers ORDER BY name"
+                """
+                SELECT r.*, rg.name as group_name
+                FROM researchers r
+                LEFT JOIN researcher_groups rg ON r.group_id = rg.id
+                ORDER BY r.name
+                """
             ).fetchall()
     return [_deserialise_json_fields(_row_to_dict(r), _RESEARCHER_JSON) for r in rows]
 

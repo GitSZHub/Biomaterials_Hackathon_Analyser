@@ -157,7 +157,7 @@ class ResearcherNetworkTab(QWidget):
         layout.setSpacing(8)
 
         # Header
-        header = QLabel("👥 Researcher Network")
+        header = QLabel("Researcher Network")
         header.setFont(QFont("Arial", 14, QFont.Weight.Bold))
         layout.addWidget(header)
 
@@ -270,9 +270,19 @@ class ResearcherNetworkTab(QWidget):
         self.feed_filter.addItem("All researchers")
         self.feed_filter.currentIndexChanged.connect(self._load_feed)
 
+        self.feed_flag_btn = QPushButton("  Flag for Briefing")
+        self.feed_flag_btn.setIcon(qta.icon('fa5s.bookmark'))
+        self.feed_flag_btn.setEnabled(False)
+        self.feed_flag_btn.clicked.connect(self.toggle_feed_flag)
+
+        self.feed_flagged_label = QLabel("")
+        self.feed_flagged_label.setStyleSheet("color: #6c757d; font-size: 11px;")
+
         feed_toolbar.addWidget(refresh_feed_btn)
         feed_toolbar.addWidget(QLabel("Filter:"))
         feed_toolbar.addWidget(self.feed_filter)
+        feed_toolbar.addWidget(self.feed_flag_btn)
+        feed_toolbar.addWidget(self.feed_flagged_label)
         feed_toolbar.addStretch()
         feed_layout.addLayout(feed_toolbar)
 
@@ -305,7 +315,7 @@ class ResearcherNetworkTab(QWidget):
         discover_tab = QWidget()
         discover_layout = QVBoxLayout(discover_tab)
         discover_layout.addWidget(QLabel(
-            "🔍  Network Discovery (BFS co-author expansion)\n\n"
+            "Network Discovery (BFS co-author expansion)\n\n"
             "Coming post day-one:\n"
             "• Set hop depth (1-2) and time window\n"
             "• App finds co-authors of your tracked researchers\n"
@@ -353,7 +363,7 @@ class ResearcherNetworkTab(QWidget):
 
             self.researcher_table.setItem(row, 0, QTableWidgetItem(r.get("name", "")))
             self.researcher_table.setItem(row, 1, QTableWidgetItem(r.get("institution", "")))
-            self.researcher_table.setItem(row, 2, QTableWidgetItem(""))  # group filled below
+            self.researcher_table.setItem(row, 2, QTableWidgetItem(r.get("group_name") or ""))
             self.researcher_table.setItem(row, 3, QTableWidgetItem(tag_str))
             self.researcher_table.setItem(row, 4, QTableWidgetItem(str(r.get("paper_count", 0))))
             self.researcher_table.setItem(row, 5, QTableWidgetItem(last_synced))
@@ -387,6 +397,7 @@ class ResearcherNetworkTab(QWidget):
 
             self._feed_papers = tracker.get_feed(limit=100, researcher_id=rid)
             self._populate_feed_table()
+            self._refresh_feed_flagged_count()
         except Exception as e:
             self.status_label.setText(f"Feed error: {e}")
 
@@ -515,3 +526,53 @@ class ResearcherNetworkTab(QWidget):
         paper = self._feed_papers[row]
         abstract = paper.get("abstract") or "Abstract not available."
         self.feed_abstract.setPlainText(abstract)
+        self._update_feed_flag_btn(paper.get("pmid"))
+
+    def _update_feed_flag_btn(self, pmid):
+        if not pmid:
+            self.feed_flag_btn.setEnabled(False)
+            return
+        self.feed_flag_btn.setEnabled(True)
+        try:
+            from data_manager.crud import get_flagged_pmids
+            flagged = get_flagged_pmids()
+            is_flagged = str(pmid) in flagged
+            if is_flagged:
+                self.feed_flag_btn.setText("  Flagged for Briefing")
+                self.feed_flag_btn.setStyleSheet(
+                    "QPushButton { background-color: #6f42c1; color: white; "
+                    "border-radius: 5px; padding: 6px 14px; font-weight: bold; }"
+                    "QPushButton:hover { background-color: #563d7c; }")
+            else:
+                self.feed_flag_btn.setText("  Flag for Briefing")
+                self.feed_flag_btn.setStyleSheet("")
+        except Exception:
+            pass
+
+    def toggle_feed_flag(self):
+        row = self.feed_table.currentRow()
+        if row < 0 or row >= len(self._feed_papers):
+            return
+        paper = self._feed_papers[row]
+        pmid = paper.get("pmid")
+        if not pmid:
+            return
+        try:
+            from data_manager.crud import get_flagged_pmids, flag_paper_for_briefing, unflag_paper_for_briefing
+            flagged = get_flagged_pmids()
+            if str(pmid) in flagged:
+                unflag_paper_for_briefing(str(pmid))
+            else:
+                flag_paper_for_briefing(str(pmid))
+            self._update_feed_flag_btn(pmid)
+            self._refresh_feed_flagged_count()
+        except Exception as e:
+            self.status_label.setText(f"Flag error: {e}")
+
+    def _refresh_feed_flagged_count(self):
+        try:
+            from data_manager.crud import get_flagged_pmids
+            n = len(get_flagged_pmids())
+            self.feed_flagged_label.setText(f"{n} flagged" if n else "")
+        except Exception:
+            pass

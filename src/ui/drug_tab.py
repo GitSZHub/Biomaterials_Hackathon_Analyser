@@ -136,6 +136,10 @@ class DrugTab(QWidget):
         layout = QVBoxLayout(self)
         layout.setSpacing(6)
 
+        header = QLabel("Drug Delivery")
+        header.setFont(QFont("Arial", 14, QFont.Weight.Bold))
+        layout.addWidget(header)
+
         tabs = QTabWidget()
         tabs.addTab(self._build_search_tab(),
                     qta.icon("fa5s.search"),    "Compound Search")
@@ -208,10 +212,26 @@ class DrugTab(QWidget):
         self._detail_text.setPlaceholderText("Click a row to see full properties.")
         detail_layout.addWidget(self._detail_text)
 
+        detail_btns = QHBoxLayout()
         use_btn = QPushButton("Use in PK Modelling")
         use_btn.setIcon(qta.icon("fa5s.arrow-right"))
         use_btn.clicked.connect(self._use_in_pk)
-        detail_layout.addWidget(use_btn)
+        detail_btns.addWidget(use_btn)
+
+        self._open_pubchem_btn = QPushButton("Open in PubChem")
+        self._open_pubchem_btn.setIcon(qta.icon("fa5s.external-link-alt"))
+        self._open_pubchem_btn.setEnabled(False)
+        self._open_pubchem_btn.clicked.connect(self._open_in_pubchem)
+        detail_btns.addWidget(self._open_pubchem_btn)
+
+        self._open_chembl_btn = QPushButton("Open in ChEMBL")
+        self._open_chembl_btn.setIcon(qta.icon("fa5s.external-link-alt"))
+        self._open_chembl_btn.setEnabled(False)
+        self._open_chembl_btn.clicked.connect(self._open_in_chembl)
+        detail_btns.addWidget(self._open_chembl_btn)
+
+        detail_btns.addStretch()
+        detail_layout.addLayout(detail_btns)
         layout.addWidget(detail_box)
 
         return w
@@ -460,12 +480,28 @@ class DrugTab(QWidget):
                 lines.append(f"<b>{k}:</b> {v}")
         self._detail_text.setHtml("<br>".join(lines))
 
+        # Enable relevant browser button
+        self._open_pubchem_btn.setEnabled(bool(record.get("cid")))
+        self._open_chembl_btn.setEnabled(bool(record.get("chembl_id")))
+
     def _use_in_pk(self):
         name = (self._selected_compound.get("name")
                 or self._selected_compound.get("iupac_name")
                 or "Selected compound")
         self._pk_compound_label.setText(f"Compound: <b>{name}</b>")
         self._tabs.setCurrentIndex(1)
+
+    def _open_in_pubchem(self):
+        cid = self._selected_compound.get("cid")
+        if cid:
+            import webbrowser
+            webbrowser.open(f"https://pubchem.ncbi.nlm.nih.gov/compound/{cid}")
+
+    def _open_in_chembl(self):
+        chembl_id = self._selected_compound.get("chembl_id")
+        if chembl_id:
+            import webbrowser
+            webbrowser.open(f"https://www.ebi.ac.uk/chembl/compound_report_card/{chembl_id}/")
 
     # ── Slots: PK Modelling ───────────────────────────────────────────────────
 
@@ -484,8 +520,6 @@ class DrugTab(QWidget):
 
             # Build summary
             model_cls = [PKLevel1, PKLevel2, PKLevel3][idx]
-            clean_kwargs = {k: v for k, v in self._param_widgets.items()}
-            # Recreate model for summary
             m_kwargs = {k: w.value() for k, w in self._param_widgets.items()}
             model_obj = model_cls(**m_kwargs)
             self._current_model_summary = model_obj.summary()

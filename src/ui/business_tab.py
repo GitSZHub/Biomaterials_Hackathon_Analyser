@@ -83,6 +83,10 @@ class BusinessTab(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
+        header = QLabel("Business Intelligence")
+        header.setFont(QFont("Segoe UI", 14, QFont.Weight.Bold))
+        layout.addWidget(header)
+
         tabs = QTabWidget()
         tabs.addTab(self._build_market_tab(),        qta.icon('fa5s.chart-pie'),    "Market Analysis")
         tabs.addTab(self._build_competitive_tab(),   qta.icon('fa5s.sitemap'),      "Competitive")
@@ -592,6 +596,9 @@ class BusinessTab(QWidget):
         return w
 
     def _run_strategy(self):
+        if not _BI_OK:
+            self._strat_insight.setPlainText("Business intelligence engine not available.")
+            return
         _, audience = self.AUDIENCES[self._strat_audience.currentIndex()]
         tissue = self._strat_tissue.currentText()
 

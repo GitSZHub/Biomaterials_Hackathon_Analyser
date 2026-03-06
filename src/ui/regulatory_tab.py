@@ -186,11 +186,16 @@ class RegulatoryTab(QWidget):
         self._biocompat_worker: Optional[BiocompatWorker] = None
         self._ai_worker: Optional[AIRegulatoryWorker]     = None
         self._tox_tab = None   # set by main_window after construction
+        self._exp_tab = None   # set by main_window after construction
         self._init_ui()
 
     def set_tox_tab(self, tox_tab) -> None:
         """Wire in the ToxTab so workers can use live MCP clients."""
         self._tox_tab = tox_tab
+
+    def set_experimental_tab(self, exp_tab) -> None:
+        """Wire in ExperimentalTab so classification auto-prefills the wizard."""
+        self._exp_tab = exp_tab
 
     def _get_live_clients(self) -> Dict:
         if self._tox_tab is not None:
@@ -203,6 +208,9 @@ class RegulatoryTab(QWidget):
     def _init_ui(self):
         layout = QVBoxLayout(self)
         layout.setSpacing(6)
+        header = QLabel("Regulatory Engine")
+        header.setFont(QFont("Segoe UI", 14, QFont.Weight.Bold))
+        layout.addWidget(header)
         self._tabs = QTabWidget()
         self._tabs.addTab(self._build_classifier_tab(), qta.icon("fa5s.sitemap"),    "Device Classifier")
         self._tabs.addTab(self._build_iso_tab(),        qta.icon("fa5s.list-ol"),    "ISO 10993")
@@ -491,11 +499,11 @@ class RegulatoryTab(QWidget):
             self._eu_label.setText(f"<b>EU MDR</b><br>{dc.eu_class}")
             atmp_text = "YES" if dc.atmp_flag else "No"
             self._atmp_label.setText(f"<b>ATMP</b><br>{atmp_text}")
-            if dc.atmp_flag:
-                self._atmp_label.setStyleSheet(
-                    "QLabel { background: #8e44ad; color: white; border-radius: 6px; "
-                    "padding: 8px 16px; font-size: 13px; }"
-                )
+            atmp_bg = "#8e44ad" if dc.atmp_flag else "#2c3e50"
+            self._atmp_label.setStyleSheet(
+                f"QLabel {{ background: {atmp_bg}; color: white; border-radius: 6px; "
+                "padding: 8px 16px; font-size: 13px; }"
+            )
             color = _RED if dc.is_high_risk else (_AMBER if dc.fda_class == "Class II" else _GREEN)
             self._scenario_label.setStyleSheet(f"color: {color};")
             self._reasoning_text.setPlainText(
@@ -507,6 +515,13 @@ class RegulatoryTab(QWidget):
             from regulatory_engine.pathway_mapper import PathwayMapper
             self._pathway = PathwayMapper().map(dc)
             self._populate_pathway(self._pathway)
+
+            # Prefill experimental design wizard
+            if self._exp_tab is not None:
+                self._exp_tab.prefill(
+                    tissue=self._tissue_combo.currentText(),
+                    scenario=dc.scenario,
+                )
         except Exception as e:
             QMessageBox.warning(self, "Classification error", str(e))
 

@@ -313,17 +313,55 @@ class ContextAssembler:
     def _harvest_literature(self, ctx: BriefingContext) -> None:
         try:
             from data_manager import get_db
+            import json
             db = get_db()
             with db.connection() as conn:
                 count = conn.execute("SELECT COUNT(*) FROM papers").fetchone()[0]
-                papers = conn.execute(
-                    "SELECT authors, year, title FROM papers ORDER BY year DESC LIMIT 5"
+
+                # Prefer flagged papers; fall back to 8 newest if none flagged
+                flagged = conn.execute(
+                    """
+                    SELECT p.authors_json, p.year, p.title, p.abstract
+                    FROM papers p
+                    JOIN paper_annotations pa ON p.pmid = pa.paper_id
+                    WHERE pa.annotation_type = 'briefing_flag'
+                    ORDER BY p.year DESC
+                    """
                 ).fetchall()
-            ctx.paper_count = count
+
+                if flagged:
+                    papers = flagged
+                    ctx.paper_count = count  # total indexed
+                else:
+                    papers = conn.execute(
+                        "SELECT authors_json, year, title, abstract FROM papers ORDER BY year DESC LIMIT 8"
+                    ).fetchall()
+                    ctx.paper_count = count
+
+            def _first_author(authors_json: str) -> str:
+                try:
+                    authors = json.loads(authors_json or "[]")
+                    return authors[0].split(",")[0] if authors else "Unknown"
+                except Exception:
+                    return "Unknown"
+
             ctx.top_papers = [
-                f"{(p['authors'] or 'Unknown').split(',')[0]} ({p['year'] or '?'}) — {(p['title'] or '')[:80]}"
-                for p in papers
+                f"{_first_author(p['authors_json'])} ({p['year'] or '?'}) — {(p['title'] or '')[:80]}"
+                for p in papers[:8]
             ]
+
+            # Pull first sentence of each abstract as a key finding
+            ctx.key_findings = []
+            for p in papers[:5]:
+                abstract = (p["abstract"] or "").strip()
+                if abstract:
+                    sentence = abstract.split(".")[0].strip()
+                    if len(sentence) > 20:
+                        ctx.key_findings.append(f"{(p['title'] or '')[:50]}... → {sentence}.")
+
+            if flagged:
+                ctx.key_findings.insert(0, f"{len(flagged)} papers manually selected by team")
+
         except Exception as e:
             logger.debug("Literature harvest failed: %s", e)
 
@@ -333,12 +371,12 @@ class ContextAssembler:
             db = get_db()
             with db.connection() as conn:
                 materials = conn.execute(
-                    "SELECT name, material_class FROM materials LIMIT 10"
+                    'SELECT name, "class" as material_class FROM materials LIMIT 10'
                 ).fetchall()
             ctx.materials_named = [m["name"] for m in materials]
             ctx.material_highlights = [
                 f"{m['name']} ({m['material_class']})" for m in materials[:3]
-                if m.get("material_class")
+                if m["material_class"]
             ]
         except Exception as e:
             logger.debug("Materials harvest failed: %s", e)

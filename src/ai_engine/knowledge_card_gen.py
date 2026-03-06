@@ -127,10 +127,10 @@ def format_card_markdown(card: Dict) -> str:
     lines.append(f"## {name}\n")
 
     if card.get("error"):
-        lines.append(f"⚠️ Card generation failed: {card['error']}")
+        lines.append(f"Card generation failed: {card['error']}")
         return "\n".join(lines)
 
-    ai_flag = "🤖 AI-generated" if card.get("ai_generated") else "✅ Human-verified"
+    ai_flag = "AI-generated" if card.get("ai_generated") else "Human-verified"
     conf    = card.get("confidence", "unknown")
     lines.append(f"*{ai_flag} · Confidence: {conf}*\n")
 

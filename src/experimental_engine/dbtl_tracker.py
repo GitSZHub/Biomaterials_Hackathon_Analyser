@@ -81,8 +81,8 @@ class DBTLTracker:
     def __init__(self, project_id: int = 1):
         self._project_id = project_id
         self._memory_store: List[DBTLCycle] = []   # fallback
-        self._next_id = 1
         self._db_available = self._check_db()
+        self._next_id = self._load_next_id()
 
     # ── Public API ─────────────────────────────────────────────────────────────
 
@@ -205,6 +205,24 @@ class DBTLTracker:
         return rows
 
     # ── Persistence helpers ────────────────────────────────────────────────────
+
+    def _load_next_id(self) -> int:
+        """Return max(id)+1 from dbtl_cycles for this project, or 1 if empty."""
+        if not self._db_available:
+            return 1
+        try:
+            from data_manager import get_db   # type: ignore
+            db = get_db()
+            with db.connection() as conn:
+                row = conn.execute(
+                    "SELECT MAX(id) FROM dbtl_cycles WHERE project_id=?",
+                    (self._project_id,)
+                ).fetchone()
+            if row and row[0] is not None:
+                return int(row[0]) + 1
+        except Exception:
+            pass
+        return 1
 
     def _check_db(self) -> bool:
         try:

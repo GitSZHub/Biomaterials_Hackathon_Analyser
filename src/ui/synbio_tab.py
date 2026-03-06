@@ -17,35 +17,35 @@ import qtawesome as qta
 
 # ── Lazy engine imports ───────────────────────────────────────────────────────
 def _igem():
-    from src.synthetic_biology_engine.igem_client import IGEMClient
+    from synthetic_biology_engine.igem_client import IGEMClient
     return IGEMClient()
 
 def _synbiohub():
-    from src.synthetic_biology_engine.synbiohub_client import SynBioHubClient
+    from synthetic_biology_engine.synbiohub_client import SynBioHubClient
     return SynBioHubClient()
 
 def _addgene():
-    from src.synthetic_biology_engine.addgene_client import AddgeneClient
+    from synthetic_biology_engine.addgene_client import AddgeneClient
     return AddgeneClient()
 
 def _dbtl():
-    from src.synthetic_biology_engine.dbtl_wizard import DBTLWizard, DBTLDesign
+    from synthetic_biology_engine.dbtl_wizard import DBTLWizard, DBTLDesign
     return DBTLWizard(), DBTLDesign
 
 def _genetic_editor():
-    from src.synthetic_biology_engine.genetic_editor import GeneticEditorAdvisor
+    from synthetic_biology_engine.genetic_editor import GeneticEditorAdvisor
     return GeneticEditorAdvisor()
 
 def _delivery_advisor():
-    from src.synthetic_biology_engine.delivery_advisor import DeliveryAdvisor
+    from synthetic_biology_engine.delivery_advisor import DeliveryAdvisor
     return DeliveryAdvisor()
 
 def _living_materials():
-    from src.synthetic_biology_engine.living_materials import LivingMaterialsEngine, LivingMaterialDesign
+    from synthetic_biology_engine.living_materials import LivingMaterialsEngine, LivingMaterialDesign
     return LivingMaterialsEngine(), LivingMaterialDesign
 
 def _bioproduction():
-    from src.synthetic_biology_engine.bioproduction_planner import BioproductionPlanner
+    from synthetic_biology_engine.bioproduction_planner import BioproductionPlanner
     return BioproductionPlanner()
 
 
@@ -137,8 +137,9 @@ class _LivingMaterialsWorker(QThread):
 
 
 class _BioproductionWorker(QThread):
-    plan_ready = pyqtSignal(str)
-    error      = pyqtSignal(str)
+    plan_ready    = pyqtSignal(str)
+    systems_ready = pyqtSignal(list)
+    error         = pyqtSignal(str)
 
     def __init__(self, molecule: str, chassis: str, scale: str, notes: str):
         super().__init__()
@@ -150,6 +151,12 @@ class _BioproductionWorker(QThread):
     def run(self):
         try:
             planner = _bioproduction()
+            # Comparison table (may be fast but keep off main thread)
+            try:
+                recs = planner.recommend(self.molecule, self.chassis)
+                self.systems_ready.emit(recs)
+            except Exception:
+                pass
             plan = planner.generate_plan(self.molecule, self.chassis, self.scale, self.notes)
             self.plan_ready.emit(plan)
         except Exception as exc:
@@ -439,9 +446,14 @@ class _DBTLWizardTab(QWidget):
         ll.addWidget(_section_header("Step 4 — Chassis Organism"))
         chassis_row = QHBoxLayout()
         self._chassis_combo = QComboBox()
-        wizard, _ = _dbtl()
-        for c in wizard.get_chassis_list():
-            self._chassis_combo.addItem(c)
+        try:
+            wizard, _ = _dbtl()
+            for c in wizard.get_chassis_list():
+                self._chassis_combo.addItem(c)
+        except Exception:
+            self._chassis_combo.addItem("E. coli")
+            self._chassis_combo.addItem("S. cerevisiae")
+            self._chassis_combo.addItem("Mammalian cells")
         chassis_row.addWidget(QLabel("Chassis:"))
         chassis_row.addWidget(self._chassis_combo)
         self._chassis_info_btn = QPushButton(qta.icon('fa5s.info-circle'), " Info")
@@ -818,9 +830,12 @@ class _LivingMaterialsTab(QWidget):
         # Archetypes
         ll.addWidget(_section_header("Archetypes (pre-built integration designs)"))
         self._archetype_combo = QComboBox()
-        engine, _ = _living_materials()
-        for arch in engine.get_archetypes():
-            self._archetype_combo.addItem(arch["name"])
+        try:
+            engine, _ = _living_materials()
+            for arch in engine.get_archetypes():
+                self._archetype_combo.addItem(arch["name"])
+        except Exception:
+            engine = None
         self._archetype_combo.currentIndexChanged.connect(self._load_archetype)
         load_arch_btn = QPushButton(qta.icon('fa5s.download'), " Load archetype")
         load_arch_btn.clicked.connect(self._load_archetype)
@@ -854,8 +869,13 @@ class _LivingMaterialsTab(QWidget):
 
         ll.addWidget(_section_header("Scaffold Material"))
         self._scaffold_combo = QComboBox()
-        for mat in engine.get_scaffold_list():
-            self._scaffold_combo.addItem(mat)
+        try:
+            _eng, _ = _living_materials()
+            for mat in _eng.get_scaffold_list():
+                self._scaffold_combo.addItem(mat)
+        except Exception:
+            for mat in ["GelMA", "Collagen", "Fibrin", "PLGA", "Silk fibroin"]:
+                self._scaffold_combo.addItem(mat)
         self._scaffold_combo.currentIndexChanged.connect(self._show_scaffold_info)
         ll.addWidget(self._scaffold_combo)
         self._scaffold_info_lbl = QLabel("")
@@ -1079,24 +1099,19 @@ class _BioproductionTab(QWidget):
             self._notes_edit.text().strip(),
         )
         self._worker.plan_ready.connect(self._on_plan)
+        self._worker.systems_ready.connect(self._on_systems)
         self._worker.error.connect(self._on_error)
         self._worker.start()
 
-        # Also populate comparison table from synchronous recommender
-        try:
-            planner = _bioproduction()
-            recs = planner.recommend(mol, chassis)
-            self._sys_table.setRowCount(0)
-            for r in recs:
-                row = self._sys_table.rowCount()
-                self._sys_table.insertRow(row)
-                self._sys_table.setItem(row, 0, QTableWidgetItem(r.get("system", "")))
-                self._sys_table.setItem(row, 1, QTableWidgetItem(r.get("yield", "")))
-                self._sys_table.setItem(row, 2, QTableWidgetItem(r.get("cost_tier", "")))
-                gmp = r.get("gmp_path", "")[:40]
-                self._sys_table.setItem(row, 3, QTableWidgetItem(gmp))
-        except Exception:
-            pass
+    def _on_systems(self, recs: list):
+        self._sys_table.setRowCount(0)
+        for r in recs:
+            row = self._sys_table.rowCount()
+            self._sys_table.insertRow(row)
+            self._sys_table.setItem(row, 0, QTableWidgetItem(r.get("system", "")))
+            self._sys_table.setItem(row, 1, QTableWidgetItem(r.get("yield", "")))
+            self._sys_table.setItem(row, 2, QTableWidgetItem(r.get("cost_tier", "")))
+            self._sys_table.setItem(row, 3, QTableWidgetItem(r.get("gmp_path", "")[:40]))
 
     def _on_plan(self, plan: str):
         self._plan_box.setPlainText(plan)
@@ -1138,7 +1153,11 @@ class SynBioTab(QWidget):
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(10, 10, 10, 10)
+
+        header = QLabel("Synthetic Biology")
+        header.setFont(QFont("Segoe UI", 14, QFont.Weight.Bold))
+        layout.addWidget(header)
 
         tabs = QTabWidget()
 
