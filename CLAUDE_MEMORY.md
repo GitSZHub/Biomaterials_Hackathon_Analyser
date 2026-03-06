@@ -97,6 +97,48 @@ Bio Analysis → Drug Delivery → Regulatory → Experimental Design → Toxico
    genetic editor, delivery advisor, bioproduction planner)
 2. Assay Recommender + Microscopy Advisor + Proteomics Advisor + Flow Cytometry Advisor
 
+## How to Run the App
+
+### Setup (first time)
+```bash
+cd "c:\Users\szaha\OneDrive\Documents\R_Py_Projects\Biomaterials_Hackathon_Analyser"
+python -m venv .venv
+.venv\Scripts\activate
+pip install PyQt6 qtawesome anthropic requests pandas numpy matplotlib plotly python-dotenv
+python main.py
+```
+
+### Subsequent runs
+```bash
+cd "c:\Users\szaha\OneDrive\Documents\R_Py_Projects\Biomaterials_Hackathon_Analyser"
+.venv\Scripts\activate
+python main.py
+```
+
+### Install packages on-demand (NOT from requirements.txt)
+requirements.txt has broken/heavy packages — install only as needed:
+- `pip install PyQt6 qtawesome` — GUI (required)
+- `pip install anthropic` — Claude API (required for AI features)
+- `pip install requests pandas numpy` — core data (required)
+- `pip install matplotlib plotly` — visualisation
+- `pip install python-dotenv` — reads config/.env for API keys
+- `pip install biopython pubchempy` — bio/drug modules
+- `pip install scanpy anndata` — single-cell analysis
+- `pip install pdfplumber pymupdf` — PDF extraction
+
+DO NOT run `pip install -r requirements.txt` — it will fail on:
+- `rdkit` (needs conda or wheel, not pip)
+- `pymatgen`, `matminer` (large, slow, not needed yet)
+- `comptox-mcp`, `aop-mcp`, `pbpk-mcp` (don't exist on PyPI — placeholders)
+- `textract`, `psycopg2-binary`, `pymongo` (unnecessary)
+
+### API keys
+Put in `config/.env`:
+```
+ANTHROPIC_API_KEY=sk-ant-...
+EPA_COMPTOX_API_KEY=...   # optional, CompTox enrichment only
+```
+
 ## User Preferences
 - No emojis
 - Concise responses

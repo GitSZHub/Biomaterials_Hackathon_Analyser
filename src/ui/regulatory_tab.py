@@ -204,11 +204,11 @@ class RegulatoryTab(QWidget):
         layout = QVBoxLayout(self)
         layout.setSpacing(6)
         self._tabs = QTabWidget()
-        self._tabs.addTab(self._build_classifier_tab(), qta.icon("fa.sitemap"),    "Device Classifier")
-        self._tabs.addTab(self._build_iso_tab(),        qta.icon("fa.list-ol"),    "ISO 10993")
-        self._tabs.addTab(self._build_score_tab(),      qta.icon("fa.tachometer"), "Biocompat Score")
-        self._tabs.addTab(self._build_pathway_tab(),    qta.icon("fa.road"),       "Pathway Timeline")
-        self._tabs.addTab(self._build_ai_tab(),         qta.icon("fa.magic"),      "AI Narrative")
+        self._tabs.addTab(self._build_classifier_tab(), qta.icon("fa5s.sitemap"),    "Device Classifier")
+        self._tabs.addTab(self._build_iso_tab(),        qta.icon("fa5s.list-ol"),    "ISO 10993")
+        self._tabs.addTab(self._build_score_tab(),      qta.icon("fa5s.tachometer-alt"), "Biocompat Score")
+        self._tabs.addTab(self._build_pathway_tab(),    qta.icon("fa5s.road"),       "Pathway Timeline")
+        self._tabs.addTab(self._build_ai_tab(),         qta.icon("fa5s.magic"),      "AI Narrative")
         layout.addWidget(self._tabs)
 
     # ── Classifier tab ─────────────────────────────────────────────────────────
@@ -262,7 +262,7 @@ class RegulatoryTab(QWidget):
         grid.addWidget(self._tissue_combo, 4, 1)
 
         classify_btn = QPushButton("Classify Device")
-        classify_btn.setIcon(qta.icon("fa.sitemap"))
+        classify_btn.setIcon(qta.icon("fa5s.sitemap"))
         classify_btn.setStyleSheet("QPushButton { font-weight: bold; }")
         classify_btn.clicked.connect(self._run_classify)
         grid.addWidget(classify_btn, 5, 0, 1, 4)
@@ -295,7 +295,7 @@ class RegulatoryTab(QWidget):
 
         next_btn_row = QHBoxLayout()
         run_all_btn = QPushButton("Run ISO 10993 + Pathway")
-        run_all_btn.setIcon(qta.icon("fa.play"))
+        run_all_btn.setIcon(qta.icon("fa5s.play"))
         run_all_btn.clicked.connect(self._run_all)
         next_btn_row.addWidget(run_all_btn)
         next_btn_row.addStretch()
@@ -328,7 +328,7 @@ class RegulatoryTab(QWidget):
         )
         comp_row.addWidget(self._components_input)
         run_iso_btn = QPushButton("Run Assessment")
-        run_iso_btn.setIcon(qta.icon("fa.list-ol"))
+        run_iso_btn.setIcon(qta.icon("fa5s.list-ol"))
         run_iso_btn.clicked.connect(self._run_iso)
         comp_row.addWidget(run_iso_btn)
         layout.addLayout(comp_row)
@@ -361,7 +361,7 @@ class RegulatoryTab(QWidget):
 
         run_btn_row = QHBoxLayout()
         self._score_btn = QPushButton("Calculate Biocompatibility Score")
-        self._score_btn.setIcon(qta.icon("fa.tachometer"))
+        self._score_btn.setIcon(qta.icon("fa5s.tachometer-alt"))
         self._score_btn.clicked.connect(self._run_biocompat)
         run_btn_row.addWidget(self._score_btn)
         run_btn_row.addStretch()
@@ -447,7 +447,7 @@ class RegulatoryTab(QWidget):
 
         btn_row = QHBoxLayout()
         self._ai_btn = QPushButton("Generate Regulatory Narrative")
-        self._ai_btn.setIcon(qta.icon("fa.magic"))
+        self._ai_btn.setIcon(qta.icon("fa5s.magic"))
         self._ai_btn.clicked.connect(self._run_ai)
         btn_row.addWidget(self._ai_btn)
         btn_row.addStretch()

@@ -84,12 +84,12 @@ class BusinessTab(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         tabs = QTabWidget()
-        tabs.addTab(self._build_market_tab(),        qta.icon('fa.pie-chart'),    "Market Analysis")
-        tabs.addTab(self._build_competitive_tab(),   qta.icon('fa.sitemap'),      "Competitive")
-        tabs.addTab(self._build_stakeholder_tab(),   qta.icon('fa.users'),        "Stakeholders")
-        tabs.addTab(self._build_swot_tab(),          qta.icon('fa.th-large'),     "SWOT")
-        tabs.addTab(self._build_patent_tab(),        qta.icon('fa.legal'),        "Patents")
-        tabs.addTab(self._build_strategy_tab(),      qta.icon('fa.lightbulb-o'), "Strategic Insight")
+        tabs.addTab(self._build_market_tab(),        qta.icon('fa5s.chart-pie'),    "Market Analysis")
+        tabs.addTab(self._build_competitive_tab(),   qta.icon('fa5s.sitemap'),      "Competitive")
+        tabs.addTab(self._build_stakeholder_tab(),   qta.icon('fa5s.users'),        "Stakeholders")
+        tabs.addTab(self._build_swot_tab(),          qta.icon('fa5s.th-large'),     "SWOT")
+        tabs.addTab(self._build_patent_tab(),        qta.icon('fa5s.gavel'),        "Patents")
+        tabs.addTab(self._build_strategy_tab(),      qta.icon('fa5s.lightbulb'), "Strategic Insight")
         layout.addWidget(tabs)
 
     # ── Sub-tab 1: Market Analysis ─────────────────────────────────────────────
@@ -229,7 +229,7 @@ class BusinessTab(QWidget):
         layout = QVBoxLayout(w)
 
         bar = QHBoxLayout()
-        add_btn = QPushButton(qta.icon('fa.plus'), " Add Competitor")
+        add_btn = QPushButton(qta.icon('fa5s.plus'), " Add Competitor")
         add_btn.setStyleSheet(self._primary_btn_style())
         add_btn.clicked.connect(self._add_competitor)
         bar.addWidget(add_btn)
@@ -371,7 +371,7 @@ class BusinessTab(QWidget):
         self._swot_scenario = QComboBox()
         self._swot_scenario.addItems(["A", "B", "C", "D"])
 
-        create_btn = QPushButton(qta.icon('fa.plus'), " Create / Seed SWOT")
+        create_btn = QPushButton(qta.icon('fa5s.plus'), " Create / Seed SWOT")
         create_btn.setStyleSheet(self._primary_btn_style())
         create_btn.clicked.connect(self._create_swot)
 
@@ -388,7 +388,7 @@ class BusinessTab(QWidget):
         self._swot_lens.currentTextChanged.connect(self._refresh_swot_view)
         lens_bar.addWidget(self._swot_lens)
         lens_bar.addStretch()
-        add_item_btn = QPushButton(qta.icon('fa.edit'), " Add Item")
+        add_item_btn = QPushButton(qta.icon('fa5s.edit'), " Add Item")
         add_item_btn.clicked.connect(self._add_swot_item)
         lens_bar.addWidget(add_item_btn)
         layout.addLayout(lens_bar)
@@ -491,17 +491,17 @@ class BusinessTab(QWidget):
         self._patent_query.setPlaceholderText("e.g. hydroxyapatite scaffold bone regeneration")
         bar.addWidget(self._patent_query)
 
-        gp_btn = QPushButton(qta.icon('fa.external-link'), " Google Patents")
+        gp_btn = QPushButton(qta.icon('fa5s.external-link-alt'), " Google Patents")
         gp_btn.setStyleSheet(self._primary_btn_style())
         gp_btn.clicked.connect(self._open_google_patents)
         bar.addWidget(gp_btn)
 
-        ep_btn = QPushButton(qta.icon('fa.external-link'), " Espacenet")
+        ep_btn = QPushButton(qta.icon('fa5s.external-link-alt'), " Espacenet")
         ep_btn.clicked.connect(self._open_espacenet)
         bar.addWidget(ep_btn)
         layout.addLayout(bar)
 
-        add_btn = QPushButton(qta.icon('fa.plus'), " Add Patent to Tracker")
+        add_btn = QPushButton(qta.icon('fa5s.plus'), " Add Patent to Tracker")
         add_btn.clicked.connect(self._add_patent)
         layout.addWidget(add_btn)
 
@@ -575,7 +575,7 @@ class BusinessTab(QWidget):
         layout.addWidget(form_w)
 
         btn_bar = QHBoxLayout()
-        self._strat_btn = QPushButton(qta.icon('fa.lightbulb-o'), "  Generate Strategic Insight")
+        self._strat_btn = QPushButton(qta.icon('fa5s.lightbulb'), "  Generate Strategic Insight")
         self._strat_btn.setStyleSheet(self._primary_btn_style())
         self._strat_btn.clicked.connect(self._run_strategy)
         btn_bar.addWidget(self._strat_btn)

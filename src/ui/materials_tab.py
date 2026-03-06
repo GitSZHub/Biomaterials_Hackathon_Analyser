@@ -110,7 +110,7 @@ class MaterialsTab(QWidget):
         self.search_input.setPlaceholderText("Search materials...")
         self.search_input.returnPressed.connect(self._search)
         search_btn = QPushButton()
-        search_btn.setIcon(qta.icon('fa.search'))
+        search_btn.setIcon(qta.icon('fa5s.search'))
         search_btn.setFixedWidth(32)
         search_btn.clicked.connect(self._search)
         search_row.addWidget(self.search_input)
@@ -140,7 +140,7 @@ class MaterialsTab(QWidget):
         card_toolbar.addStretch()
 
         self.gen_card_btn = QPushButton("  Generate AI Card")
-        self.gen_card_btn.setIcon(qta.icon('fa.magic'))
+        self.gen_card_btn.setIcon(qta.icon('fa5s.magic'))
         self.gen_card_btn.setEnabled(False)
         self.gen_card_btn.setStyleSheet(
             "QPushButton { background:#2E86AB; color:white; border-radius:5px;"
@@ -151,13 +151,13 @@ class MaterialsTab(QWidget):
         card_toolbar.addWidget(self.gen_card_btn)
 
         self.verify_btn = QPushButton("  Mark Verified")
-        self.verify_btn.setIcon(qta.icon('fa.check'))
+        self.verify_btn.setIcon(qta.icon('fa5s.check'))
         self.verify_btn.setEnabled(False)
         self.verify_btn.clicked.connect(self._mark_verified)
         card_toolbar.addWidget(self.verify_btn)
 
         self.compare_btn = QPushButton("  Add to Compare")
-        self.compare_btn.setIcon(qta.icon('fa.balance-scale'))
+        self.compare_btn.setIcon(qta.icon('fa5s.balance-scale'))
         self.compare_btn.setEnabled(False)
         self.compare_btn.clicked.connect(self._add_to_compare)
         card_toolbar.addWidget(self.compare_btn)
@@ -171,7 +171,7 @@ class MaterialsTab(QWidget):
             "Click 'Generate AI Card' to create one with Claude.")
         card_layout.addWidget(self.card_display)
 
-        right_tabs.addTab(card_tab, qta.icon('fa.file-text-o'), "Knowledge Card")
+        right_tabs.addTab(card_tab, qta.icon('fa5s.file-alt'), "Knowledge Card")
 
         # ── Comparison tab ────────────────────────────────────────────
         compare_tab = QWidget()
@@ -187,7 +187,7 @@ class MaterialsTab(QWidget):
         clear_compare_btn.clicked.connect(self._clear_compare)
 
         run_compare_btn = QPushButton("  Compare")
-        run_compare_btn.setIcon(qta.icon('fa.table'))
+        run_compare_btn.setIcon(qta.icon('fa5s.table'))
         run_compare_btn.clicked.connect(self._run_comparison)
 
         compare_controls.addWidget(QLabel("Comparing:"))
@@ -200,7 +200,7 @@ class MaterialsTab(QWidget):
         self.compare_table.setAlternatingRowColors(True)
         compare_layout.addWidget(self.compare_table)
 
-        right_tabs.addTab(compare_tab, qta.icon('fa.columns'), "Comparison")
+        right_tabs.addTab(compare_tab, qta.icon('fa5s.columns'), "Comparison")
 
         # ── Fabrication tab ───────────────────────────────────────────
         fab_tab = QWidget()
@@ -214,7 +214,7 @@ class MaterialsTab(QWidget):
             "Fabrication compatibility will appear here after selecting a material.")
         fab_layout.addWidget(self.fab_display)
 
-        right_tabs.addTab(fab_tab, qta.icon('fa.industry'), "Fabrication")
+        right_tabs.addTab(fab_tab, qta.icon('fa5s.industry'), "Fabrication")
 
         splitter.addWidget(right_tabs)
         splitter.setStretchFactor(0, 1)
@@ -244,9 +244,9 @@ class MaterialsTab(QWidget):
         self._tree_items = {}   # key -> QTreeWidgetItem
 
         def _type_icon(branch_type):
-            if branch_type == "deep":       return qta.icon('fa.circle', color='#2E86AB')
-            if branch_type == "monitoring": return qta.icon('fa.circle-o', color='#6c757d')
-            return qta.icon('fa.circle-o', color='#f4a261')   # promotable
+            if branch_type == "deep":       return qta.icon('fa5s.circle', color='#2E86AB')
+            if branch_type == "monitoring": return qta.icon('fa5.circle', color='#6c757d')
+            return qta.icon('fa5.circle', color='#f4a261')   # promotable
 
         def _add_node(parent_item, node):
             item = QTreeWidgetItem([node.label])

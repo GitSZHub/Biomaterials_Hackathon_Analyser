@@ -20,6 +20,7 @@ from .regulatory_tab import RegulatoryTab
 from .experimental_tab import ExperimentalTab
 from .briefing_tab import BriefingTab
 from .tox_tab import ToxTab
+from .synbio_tab import SynBioTab
 
 
 class MainWindow(QMainWindow):
@@ -67,9 +68,9 @@ class MainWindow(QMainWindow):
         """
         quick_actions = QHBoxLayout()
         for label, icon, slot in [
-            ("New Project",    'fa.plus',          self.new_project),
-            ("Open Project",   'fa.folder-open',   self.open_project),
-            ("Export Results", 'fa.download',       self.export_results),
+            ("New Project",    'fa5s.plus',          self.new_project),
+            ("Open Project",   'fa5s.folder-open',   self.open_project),
+            ("Export Results", 'fa5s.download',       self.export_results),
         ]:
             btn = QPushButton(label)
             btn.setIcon(qta.icon(icon, color='white'))
@@ -96,30 +97,36 @@ class MainWindow(QMainWindow):
         self.experimental_tab = ExperimentalTab()
         self.briefing_tab     = BriefingTab()
         self.tox_tab          = ToxTab()
+        self.synbio_tab       = SynBioTab()
 
         # Wire ToxTab -> RegulatoryTab so live MCP clients enrich ISO 10993 / biocompat
         self.regulatory_tab.set_tox_tab(self.tox_tab)
 
+        # Wire SynBio Scenario C -> RegulatoryTab notification
+        self.synbio_tab.scenario_c_changed.connect(self._on_scenario_c_changed)
+
         self.tab_widget.addTab(self.literature_tab,
-                               qta.icon('fa.book'),         "Literature")
+                               qta.icon('fa5s.book'),         "Literature")
         self.tab_widget.addTab(self.researcher_tab,
-                               qta.icon('fa.users'),        "Researcher Network")
+                               qta.icon('fa5s.users'),        "Researcher Network")
         self.tab_widget.addTab(self.materials_tab,
-                               qta.icon('fa.cogs'),         "Materials Modeling")
+                               qta.icon('fa5s.cogs'),         "Materials Modeling")
         self.tab_widget.addTab(self.business_tab,
-                               qta.icon('fa.line-chart'),   "Business Intelligence")
+                               qta.icon('fa5s.chart-line'),   "Business Intelligence")
         self.tab_widget.addTab(self.bio_tab,
-                               qta.icon('fa.flask'),        "Bio Analysis")
+                               qta.icon('fa5s.flask'),        "Bio Analysis")
         self.tab_widget.addTab(self.drug_tab,
-                               qta.icon('fa.pills'),        "Drug Delivery")
+                               qta.icon('fa5s.pills'),        "Drug Delivery")
         self.tab_widget.addTab(self.regulatory_tab,
-                               qta.icon('fa.shield'),       "Regulatory")
+                               qta.icon('fa5s.shield-alt'),       "Regulatory")
         self.tab_widget.addTab(self.experimental_tab,
-                               qta.icon('fa.flask'),        "Experimental Design")
+                               qta.icon('fa5s.flask'),        "Experimental Design")
+        self.tab_widget.addTab(self.synbio_tab,
+                               qta.icon('fa5s.dna'),          "Synthetic Biology")
         self.tab_widget.addTab(self.tox_tab,
-                               qta.icon('fa.warning'),      "Toxicology")
+                               qta.icon('fa5s.exclamation-triangle'),      "Toxicology")
         self.tab_widget.addTab(self.briefing_tab,
-                               qta.icon('fa.star'),         "Briefing Generator")
+                               qta.icon('fa5s.star'),         "Briefing Generator")
 
         main_layout.addWidget(self.tab_widget)
 
@@ -180,9 +187,9 @@ class MainWindow(QMainWindow):
         file_menu = menubar.addMenu('File')
         assert file_menu is not None
         for label, shortcut, icon, slot in [
-            ('New Project',  'Ctrl+N', 'fa.plus',        self.new_project),
-            ('Open Project', 'Ctrl+O', 'fa.folder-open', self.open_project),
-            ('Save Project', 'Ctrl+S', 'fa.save',        self.save_project),
+            ('New Project',  'Ctrl+N', 'fa5s.plus',        self.new_project),
+            ('Open Project', 'Ctrl+O', 'fa5s.folder-open', self.open_project),
+            ('Save Project', 'Ctrl+S', 'fa5s.save',        self.save_project),
         ]:
             action = QAction(qta.icon(icon), label, self)
             action.setShortcut(shortcut)
@@ -191,16 +198,16 @@ class MainWindow(QMainWindow):
 
         tools_menu = menubar.addMenu('Tools')
         assert tools_menu is not None
-        settings_action = QAction(qta.icon('fa.cog'), 'Settings', self)
+        settings_action = QAction(qta.icon('fa5s.cog'), 'Settings', self)
         settings_action.triggered.connect(self.open_settings)
-        db_action = QAction(qta.icon('fa.database'), 'Database Manager', self)
+        db_action = QAction(qta.icon('fa5s.database'), 'Database Manager', self)
         db_action.triggered.connect(self.open_db_manager)
         tools_menu.addAction(settings_action)
         tools_menu.addAction(db_action)
 
         help_menu = menubar.addMenu('Help')
         assert help_menu is not None
-        about_action = QAction(qta.icon('fa.info'), 'About', self)
+        about_action = QAction(qta.icon('fa5s.info'), 'About', self)
         about_action.triggered.connect(self.show_about)
         help_menu.addAction(about_action)
 
@@ -243,6 +250,15 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
         super().closeEvent(event)
+
+    def _on_scenario_c_changed(self, is_scenario_c: bool):
+        """Notify status bar when Living Materials triggers/clears Scenario C."""
+        if is_scenario_c:
+            self.status_bar.showMessage(
+                "Synthetic Biology: Scenario C (ATMP) detected — check Regulatory tab.")
+        else:
+            self.status_bar.showMessage(
+                "Synthetic Biology: Scenario C cleared.")
 
     # ── Stubs ─────────────────────────────────────────────────────────
     def new_project(self):

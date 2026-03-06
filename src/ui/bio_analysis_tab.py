@@ -193,7 +193,7 @@ class BioAnalysisTab(QWidget):
         banner_layout = QHBoxLayout(banner)
         banner_layout.setContentsMargins(8, 4, 8, 4)
         icon_lbl = QLabel()
-        icon_lbl.setPixmap(qta.icon("fa.warning", color="#856404").pixmap(16, 16))
+        icon_lbl.setPixmap(qta.icon("fa5s.exclamation-triangle", color="#856404").pixmap(16, 16))
         banner_layout.addWidget(icon_lbl)
         banner_layout.addWidget(QLabel(
             "<b>Matrigel caveat:</b> many GEO datasets use Matrigel as baseline. "
@@ -205,10 +205,10 @@ class BioAnalysisTab(QWidget):
 
         # ── Sub-tabs ───────────────────────────────────────────────────────
         self._tabs = QTabWidget()
-        self._tabs.addTab(self._build_search_tab(),     qta.icon("fa.search"),       "GEO Search")
-        self._tabs.addTab(self._build_expression_tab(), qta.icon("fa.table"),         "Expression Data")
-        self._tabs.addTab(self._build_volcano_tab(),    qta.icon("fa.circle"),        "Volcano Plot")
-        self._tabs.addTab(self._build_ai_tab(),         qta.icon("fa.magic"),         "AI Insight")
+        self._tabs.addTab(self._build_search_tab(),     qta.icon("fa5s.search"),       "GEO Search")
+        self._tabs.addTab(self._build_expression_tab(), qta.icon("fa5s.table"),         "Expression Data")
+        self._tabs.addTab(self._build_volcano_tab(),    qta.icon("fa5s.circle"),        "Volcano Plot")
+        self._tabs.addTab(self._build_ai_tab(),         qta.icon("fa5s.magic"),         "AI Insight")
         layout.addWidget(self._tabs)
 
     # ── GEO Search tab ─────────────────────────────────────────────────────────
@@ -235,7 +235,7 @@ class BioAnalysisTab(QWidget):
         ctrl_layout.addWidget(self._organism_combo, 1)
 
         search_btn = QPushButton("Search GEO")
-        search_btn.setIcon(qta.icon("fa.search"))
+        search_btn.setIcon(qta.icon("fa5s.search"))
         search_btn.clicked.connect(self._run_search)
         ctrl_layout.addWidget(search_btn)
         layout.addWidget(ctrl_frame)
@@ -262,12 +262,12 @@ class BioAnalysisTab(QWidget):
         # Download controls
         dl_layout = QHBoxLayout()
         self._dl_btn = QPushButton("Download Selected Dataset")
-        self._dl_btn.setIcon(qta.icon("fa.download"))
+        self._dl_btn.setIcon(qta.icon("fa5s.download"))
         self._dl_btn.clicked.connect(self._download_selected)
         dl_layout.addWidget(self._dl_btn)
 
         self._local_btn = QPushButton("Load Local File")
-        self._local_btn.setIcon(qta.icon("fa.folder-open"))
+        self._local_btn.setIcon(qta.icon("fa5s.folder-open"))
         self._local_btn.clicked.connect(self._load_local_file)
         dl_layout.addWidget(self._local_btn)
 
@@ -318,12 +318,12 @@ class BioAnalysisTab(QWidget):
         # Auto-split button + run DEG
         btn_layout = QHBoxLayout()
         auto_btn = QPushButton("Auto-split 50/50")
-        auto_btn.setIcon(qta.icon("fa.random"))
+        auto_btn.setIcon(qta.icon("fa5s.random"))
         auto_btn.clicked.connect(self._auto_split_groups)
         btn_layout.addWidget(auto_btn)
 
         demo_btn = QPushButton("Load Demo Matrix")
-        demo_btn.setIcon(qta.icon("fa.flask"))
+        demo_btn.setIcon(qta.icon("fa5s.flask"))
         demo_btn.clicked.connect(self._load_demo_matrix)
         btn_layout.addWidget(demo_btn)
 
@@ -342,7 +342,7 @@ class BioAnalysisTab(QWidget):
         btn_layout.addWidget(self._baseline_input)
 
         run_deg_btn = QPushButton("Run DEG Analysis")
-        run_deg_btn.setIcon(qta.icon("fa.play"))
+        run_deg_btn.setIcon(qta.icon("fa5s.play"))
         run_deg_btn.setStyleSheet("QPushButton { font-weight: bold; }")
         run_deg_btn.clicked.connect(self._run_deg)
         btn_layout.addWidget(run_deg_btn)
@@ -385,7 +385,7 @@ class BioAnalysisTab(QWidget):
 
         btn_layout = QHBoxLayout()
         export_btn = QPushButton("Export Figure")
-        export_btn.setIcon(qta.icon("fa.save"))
+        export_btn.setIcon(qta.icon("fa5s.save"))
         export_btn.clicked.connect(self._export_volcano)
         btn_layout.addWidget(export_btn)
         btn_layout.addStretch()
@@ -410,7 +410,7 @@ class BioAnalysisTab(QWidget):
 
         btn_layout = QHBoxLayout()
         self._ai_btn = QPushButton("Interpret DEG Results with AI")
-        self._ai_btn.setIcon(qta.icon("fa.magic"))
+        self._ai_btn.setIcon(qta.icon("fa5s.magic"))
         self._ai_btn.clicked.connect(self._run_ai_interpret)
         btn_layout.addWidget(self._ai_btn)
         btn_layout.addStretch()

@@ -184,11 +184,11 @@ class ToxTab(QWidget):
         layout = QVBoxLayout(self)
         layout.setSpacing(6)
         self._tabs = QTabWidget()
-        self._tabs.addTab(self._build_server_tab(), qta.icon("fa.server"),    "Server Control")
-        self._tabs.addTab(self._build_comptox_tab(), qta.icon("fa.flask"),    "CompTox")
-        self._tabs.addTab(self._build_admet_tab(),   qta.icon("fa.heartbeat"),"ADMET")
-        self._tabs.addTab(self._build_aop_tab(),     qta.icon("fa.sitemap"),  "AOP")
-        self._tabs.addTab(self._build_pbpk_tab(),    qta.icon("fa.line-chart"),"PBPK")
+        self._tabs.addTab(self._build_server_tab(), qta.icon("fa5s.server"),    "Server Control")
+        self._tabs.addTab(self._build_comptox_tab(), qta.icon("fa5s.flask"),    "CompTox")
+        self._tabs.addTab(self._build_admet_tab(),   qta.icon("fa5s.heartbeat"),"ADMET")
+        self._tabs.addTab(self._build_aop_tab(),     qta.icon("fa5s.sitemap"),  "AOP")
+        self._tabs.addTab(self._build_pbpk_tab(),    qta.icon("fa5s.chart-line"),"PBPK")
         layout.addWidget(self._tabs)
 
     # ── Server Control tab ────────────────────────────────────────────────────
@@ -224,15 +224,15 @@ class ToxTab(QWidget):
         # Bulk actions
         bulk_row = QHBoxLayout()
         start_all_btn = QPushButton("Start All Available")
-        start_all_btn.setIcon(qta.icon("fa.play-circle"))
+        start_all_btn.setIcon(qta.icon("fa5s.play-circle"))
         start_all_btn.setStyleSheet("QPushButton { background: #27ae60; color: white; font-weight: bold; border-radius: 4px; padding: 6px 14px; }")
         start_all_btn.clicked.connect(self._start_all_available)
         stop_all_btn = QPushButton("Stop All")
-        stop_all_btn.setIcon(qta.icon("fa.stop-circle"))
+        stop_all_btn.setIcon(qta.icon("fa5s.stop-circle"))
         stop_all_btn.setStyleSheet("QPushButton { background: #e74c3c; color: white; font-weight: bold; border-radius: 4px; padding: 6px 14px; }")
         stop_all_btn.clicked.connect(self._stop_all)
         refresh_btn = QPushButton("Refresh Status")
-        refresh_btn.setIcon(qta.icon("fa.refresh"))
+        refresh_btn.setIcon(qta.icon("fa5s.sync"))
         refresh_btn.clicked.connect(self._refresh_health)
         bulk_row.addWidget(start_all_btn)
         bulk_row.addWidget(stop_all_btn)
@@ -287,12 +287,12 @@ class ToxTab(QWidget):
 
         # Start / Stop buttons
         start_btn = QPushButton("Start")
-        start_btn.setIcon(qta.icon("fa.play", color="white"))
+        start_btn.setIcon(qta.icon("fa5s.play", color="white"))
         start_btn.setStyleSheet("QPushButton { background: #27ae60; color: white; border-radius: 4px; padding: 5px 12px; }"
                                 "QPushButton:hover { background: #1e8449; }")
         start_btn.clicked.connect(lambda checked, k=key: self._start_server(k))
         stop_btn = QPushButton("Stop")
-        stop_btn.setIcon(qta.icon("fa.stop", color="white"))
+        stop_btn.setIcon(qta.icon("fa5s.stop", color="white"))
         stop_btn.setStyleSheet("QPushButton { background: #e74c3c; color: white; border-radius: 4px; padding: 5px 12px; }"
                                "QPushButton:hover { background: #c0392b; }")
         stop_btn.clicked.connect(lambda checked, k=key: self._stop_server(k))
@@ -322,7 +322,7 @@ class ToxTab(QWidget):
         )
         input_row.addWidget(self._comptox_input)
         run_btn = QPushButton("Screen Components")
-        run_btn.setIcon(qta.icon("fa.search"))
+        run_btn.setIcon(qta.icon("fa5s.search"))
         run_btn.setStyleSheet("QPushButton { font-weight: bold; background: #2980b9; color: white; "
                               "border-radius: 4px; padding: 6px 14px; }")
         run_btn.clicked.connect(self._run_comptox)
@@ -379,7 +379,7 @@ class ToxTab(QWidget):
         self._admet_input.setFont(QFont("Courier New", 10))
         input_row.addWidget(self._admet_input)
         render_btn = QPushButton("Predict ADMET")
-        render_btn.setIcon(qta.icon("fa.heartbeat"))
+        render_btn.setIcon(qta.icon("fa5s.heartbeat"))
         render_btn.setStyleSheet("QPushButton { font-weight: bold; background: #8e44ad; color: white; "
                                  "border-radius: 4px; padding: 6px 14px; }")
         render_btn.clicked.connect(self._run_admet)
@@ -453,7 +453,7 @@ class ToxTab(QWidget):
         )
         input_row.addWidget(self._aop_input)
         run_btn = QPushButton("Map AOPs")
-        run_btn.setIcon(qta.icon("fa.sitemap"))
+        run_btn.setIcon(qta.icon("fa5s.sitemap"))
         run_btn.setStyleSheet("QPushButton { font-weight: bold; background: #16a085; color: white; "
                               "border-radius: 4px; padding: 6px 14px; }")
         run_btn.clicked.connect(self._run_aop)
@@ -511,7 +511,7 @@ class ToxTab(QWidget):
         self._pbpk_path_label.setStyleSheet("color: #888; font-size: 11px;")
         file_row.addWidget(self._pbpk_path_label)
         browse_btn = QPushButton("Browse ...")
-        browse_btn.setIcon(qta.icon("fa.folder-open"))
+        browse_btn.setIcon(qta.icon("fa5s.folder-open"))
         browse_btn.clicked.connect(self._browse_pbpk_model)
         file_row.addWidget(browse_btn)
         layout.addLayout(file_row)
@@ -548,7 +548,7 @@ class ToxTab(QWidget):
 
         run_row = QHBoxLayout()
         self._pbpk_run_btn = QPushButton("Run Simulation")
-        self._pbpk_run_btn.setIcon(qta.icon("fa.play"))
+        self._pbpk_run_btn.setIcon(qta.icon("fa5s.play"))
         self._pbpk_run_btn.setStyleSheet("QPushButton { font-weight: bold; background: #2980b9; color: white; "
                                          "border-radius: 4px; padding: 6px 14px; }")
         self._pbpk_run_btn.clicked.connect(self._run_pbpk)

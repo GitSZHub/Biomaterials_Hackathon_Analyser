@@ -138,11 +138,11 @@ class DrugTab(QWidget):
 
         tabs = QTabWidget()
         tabs.addTab(self._build_search_tab(),
-                    qta.icon("fa.search"),    "Compound Search")
+                    qta.icon("fa5s.search"),    "Compound Search")
         tabs.addTab(self._build_pk_tab(),
-                    qta.icon("fa.line-chart"), "PK Modelling")
+                    qta.icon("fa5s.chart-line"), "PK Modelling")
         tabs.addTab(self._build_ai_tab(),
-                    qta.icon("fa.magic"),     "AI Insight")
+                    qta.icon("fa5s.magic"),     "AI Insight")
         self._tabs = tabs
         layout.addWidget(tabs)
 
@@ -164,7 +164,7 @@ class DrugTab(QWidget):
         bar_layout.addWidget(self._search_input, 3)
 
         search_btn = QPushButton("Search")
-        search_btn.setIcon(qta.icon("fa.search"))
+        search_btn.setIcon(qta.icon("fa5s.search"))
         search_btn.clicked.connect(self._run_search)
         bar_layout.addWidget(search_btn)
         layout.addWidget(bar)
@@ -209,7 +209,7 @@ class DrugTab(QWidget):
         detail_layout.addWidget(self._detail_text)
 
         use_btn = QPushButton("Use in PK Modelling")
-        use_btn.setIcon(qta.icon("fa.arrow-right"))
+        use_btn.setIcon(qta.icon("fa5s.arrow-right"))
         use_btn.clicked.connect(self._use_in_pk)
         detail_layout.addWidget(use_btn)
         layout.addWidget(detail_box)
@@ -270,7 +270,7 @@ class DrugTab(QWidget):
         sim_form.addRow("Duration:", self._tmax_spin)
         sim_v.addLayout(sim_form)
         run_btn = QPushButton("Run Model")
-        run_btn.setIcon(qta.icon("fa.play"))
+        run_btn.setIcon(qta.icon("fa5s.play"))
         run_btn.setStyleSheet("QPushButton { font-weight: bold; }")
         run_btn.clicked.connect(self._run_pk)
         sim_v.addWidget(run_btn)
@@ -352,7 +352,7 @@ class DrugTab(QWidget):
 
         btn_layout = QHBoxLayout()
         self._ai_btn = QPushButton("Interpret Release Profile with AI")
-        self._ai_btn.setIcon(qta.icon("fa.magic"))
+        self._ai_btn.setIcon(qta.icon("fa5s.magic"))
         self._ai_btn.clicked.connect(self._run_ai)
         btn_layout.addWidget(self._ai_btn)
         btn_layout.addStretch()

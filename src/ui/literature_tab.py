@@ -181,7 +181,7 @@ class LiteratureTab(QWidget):
 
         btn_layout = QHBoxLayout()
         self.search_btn = QPushButton("  Search PubMed")
-        self.search_btn.setIcon(qta.icon('fa.search'))
+        self.search_btn.setIcon(qta.icon('fa5s.search'))
         self.search_btn.setStyleSheet(
             "QPushButton { background-color: #2E86AB; color: white; "
             "border-radius: 5px; padding: 8px 16px; font-weight: bold; }"
@@ -190,7 +190,7 @@ class LiteratureTab(QWidget):
         self.search_btn.clicked.connect(self.perform_search)
 
         self.clear_btn = QPushButton("  Clear")
-        self.clear_btn.setIcon(qta.icon('fa.times'))
+        self.clear_btn.setIcon(qta.icon('fa5s.times'))
         self.clear_btn.clicked.connect(self.clear_results)
 
         btn_layout.addWidget(self.search_btn)
@@ -276,7 +276,7 @@ class LiteratureTab(QWidget):
 
         action_layout = QHBoxLayout()
         self.summarise_btn = QPushButton("  AI Summary")
-        self.summarise_btn.setIcon(qta.icon('fa.magic'))
+        self.summarise_btn.setIcon(qta.icon('fa5s.magic'))
         self.summarise_btn.setEnabled(False)
         self.summarise_btn.setToolTip("Requires Claude API key in config")
         self.summarise_btn.clicked.connect(self.run_ai_summary)
@@ -291,12 +291,12 @@ class LiteratureTab(QWidget):
             pass
 
         self.pubmed_btn = QPushButton("  Open in PubMed")
-        self.pubmed_btn.setIcon(qta.icon('fa.external-link'))
+        self.pubmed_btn.setIcon(qta.icon('fa5s.external-link-alt'))
         self.pubmed_btn.setEnabled(False)
         self.pubmed_btn.clicked.connect(self.open_in_pubmed)
 
         self.flag_btn = QPushButton("  Flag for Briefing")
-        self.flag_btn.setIcon(qta.icon('fa.bookmark'))
+        self.flag_btn.setIcon(qta.icon('fa5s.bookmark'))
         self.flag_btn.setEnabled(False)
 
         action_layout.addWidget(self.summarise_btn)
@@ -304,7 +304,7 @@ class LiteratureTab(QWidget):
         action_layout.addWidget(self.flag_btn)
         details_layout.addLayout(action_layout)
 
-        right_panel.addTab(details_tab, qta.icon('fa.file-text-o'), "Paper Details")
+        right_panel.addTab(details_tab, qta.icon('fa5s.file-alt'), "Paper Details")
 
         # Topics tab (placeholder for now)
         topic_tab = QWidget()
@@ -314,7 +314,7 @@ class LiteratureTab(QWidget):
         self.topic_display = QTextEdit()
         self.topic_display.setPlaceholderText("Topic analysis results...")
         topic_layout.addWidget(self.topic_display)
-        right_panel.addTab(topic_tab, qta.icon('fa.tags'), "Topics & Trends")
+        right_panel.addTab(topic_tab, qta.icon('fa5s.tags'), "Topics & Trends")
 
         # Citation network tab (placeholder)
         citation_tab = QWidget()
@@ -324,7 +324,7 @@ class LiteratureTab(QWidget):
         self.citation_display = QTextEdit()
         self.citation_display.setPlaceholderText("Citation network...")
         citation_layout.addWidget(self.citation_display)
-        right_panel.addTab(citation_tab, qta.icon('fa.sitemap'), "Citation Network")
+        right_panel.addTab(citation_tab, qta.icon('fa5s.sitemap'), "Citation Network")
 
         splitter.addWidget(right_panel)
         splitter.setStretchFactor(0, 3)

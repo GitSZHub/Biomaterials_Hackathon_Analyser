@@ -225,7 +225,7 @@ class BriefingTab(QWidget):
         self._snap_label.setStyleSheet("font-size:10px; color:#495057;")
         snap_layout.addWidget(self._snap_label)
 
-        refresh_btn = QPushButton(qta.icon('fa.refresh'), " Refresh Context")
+        refresh_btn = QPushButton(qta.icon('fa5s.sync'), " Refresh Context")
         refresh_btn.clicked.connect(self._refresh_context)
         snap_layout.addWidget(refresh_btn)
         layout.addWidget(snap_box)
@@ -245,13 +245,13 @@ class BriefingTab(QWidget):
         layout.addWidget(self._status_label)
 
         # Generate / Cancel buttons
-        self._gen_btn = QPushButton(qta.icon('fa.magic'), "  Generate Briefing")
+        self._gen_btn = QPushButton(qta.icon('fa5s.magic'), "  Generate Briefing")
         self._gen_btn.setStyleSheet(self._primary_btn_style())
         self._gen_btn.setMinimumHeight(36)
         self._gen_btn.clicked.connect(self._start_generation)
         layout.addWidget(self._gen_btn)
 
-        self._cancel_btn = QPushButton(qta.icon('fa.stop'), " Cancel")
+        self._cancel_btn = QPushButton(qta.icon('fa5s.stop'), " Cancel")
         self._cancel_btn.setVisible(False)
         self._cancel_btn.clicked.connect(self._cancel_generation)
         layout.addWidget(self._cancel_btn)
@@ -281,7 +281,7 @@ class BriefingTab(QWidget):
             "4. Click 'Generate Briefing'."
         )
         output_layout.addWidget(self._output)
-        tabs.addTab(output_w, qta.icon('fa.file-text-o'), "Live Output")
+        tabs.addTab(output_w, qta.icon('fa5s.file-alt'), "Live Output")
 
         # Tab 2: Prompt preview (visible/editable)
         prompt_w = QWidget()
@@ -297,10 +297,10 @@ class BriefingTab(QWidget):
         self._prompt_edit.setFont(QFont("Consolas", 9))
         self._prompt_edit.setPlaceholderText("Context will appear here after 'Refresh Context'.")
         prompt_layout.addWidget(self._prompt_edit)
-        regen_from_prompt_btn = QPushButton(qta.icon('fa.magic'), " Generate with Edited Context")
+        regen_from_prompt_btn = QPushButton(qta.icon('fa5s.magic'), " Generate with Edited Context")
         regen_from_prompt_btn.clicked.connect(self._generate_with_edited_context)
         prompt_layout.addWidget(regen_from_prompt_btn)
-        tabs.addTab(prompt_w, qta.icon('fa.edit'), "Context / Prompt")
+        tabs.addTab(prompt_w, qta.icon('fa5s.edit'), "Context / Prompt")
 
         # Tab 3: Export
         export_w = QWidget()
@@ -309,9 +309,9 @@ class BriefingTab(QWidget):
         export_layout.addSpacing(8)
 
         for label, icon, fn in [
-            ("Export as Markdown (.md)",  'fa.file-text-o', self._export_markdown),
-            ("Export as HTML (.html)",    'fa.file-code-o', self._export_html),
-            ("Export as Plain Text (.txt)",'fa.file-o',     self._export_text),
+            ("Export as Markdown (.md)",  'fa5s.file-alt', self._export_markdown),
+            ("Export as HTML (.html)",    'fa5s.file-code', self._export_html),
+            ("Export as Plain Text (.txt)",'fa5s.file',     self._export_text),
         ]:
             btn = QPushButton(qta.icon(icon), f"  {label}")
             btn.setStyleSheet(self._secondary_btn_style())
@@ -319,10 +319,10 @@ class BriefingTab(QWidget):
             export_layout.addWidget(btn)
 
         export_layout.addStretch()
-        copy_btn = QPushButton(qta.icon('fa.copy'), "  Copy all to clipboard")
+        copy_btn = QPushButton(qta.icon('fa5s.copy'), "  Copy all to clipboard")
         copy_btn.clicked.connect(self._copy_to_clipboard)
         export_layout.addWidget(copy_btn)
-        tabs.addTab(export_w, qta.icon('fa.download'), "Export")
+        tabs.addTab(export_w, qta.icon('fa5s.download'), "Export")
 
         layout.addWidget(tabs)
         return panel

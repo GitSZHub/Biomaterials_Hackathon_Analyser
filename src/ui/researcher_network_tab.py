@@ -182,7 +182,7 @@ class ResearcherNetworkTab(QWidget):
         toolbar = QHBoxLayout()
 
         add_btn = QPushButton("  Add Researcher")
-        add_btn.setIcon(qta.icon('fa.user-plus'))
+        add_btn.setIcon(qta.icon('fa5s.user-plus'))
         add_btn.setStyleSheet(
             "QPushButton { background-color: #2E86AB; color: white; "
             "border-radius: 5px; padding: 6px 14px; font-weight: bold; }"
@@ -190,15 +190,15 @@ class ResearcherNetworkTab(QWidget):
         add_btn.clicked.connect(self.add_researcher_dialog)
 
         sync_all_btn = QPushButton("  Sync All")
-        sync_all_btn.setIcon(qta.icon('fa.refresh'))
+        sync_all_btn.setIcon(qta.icon('fa5s.sync'))
         sync_all_btn.clicked.connect(self.sync_all)
 
         sync_one_btn = QPushButton("  Sync Selected")
-        sync_one_btn.setIcon(qta.icon('fa.refresh'))
+        sync_one_btn.setIcon(qta.icon('fa5s.sync'))
         sync_one_btn.clicked.connect(self.sync_selected)
 
         remove_btn = QPushButton("  Remove")
-        remove_btn.setIcon(qta.icon('fa.trash'))
+        remove_btn.setIcon(qta.icon('fa5s.trash'))
         remove_btn.clicked.connect(self.remove_researcher)
 
         self.researcher_count_label = QLabel("0 researchers")
@@ -255,7 +255,7 @@ class ResearcherNetworkTab(QWidget):
         detail_layout.addWidget(self.detail_query, 2, 1)
 
         network_layout.addWidget(detail_frame)
-        tabs.addTab(network_tab, qta.icon('fa.users'), "My Network")
+        tabs.addTab(network_tab, qta.icon('fa5s.users'), "My Network")
 
         # ── Feed tab ──────────────────────────────────────────────────
         feed_tab = QWidget()
@@ -263,7 +263,7 @@ class ResearcherNetworkTab(QWidget):
 
         feed_toolbar = QHBoxLayout()
         refresh_feed_btn = QPushButton("  Refresh Feed")
-        refresh_feed_btn.setIcon(qta.icon('fa.refresh'))
+        refresh_feed_btn.setIcon(qta.icon('fa5s.sync'))
         refresh_feed_btn.clicked.connect(self._load_feed)
 
         self.feed_filter = QComboBox()
@@ -299,7 +299,7 @@ class ResearcherNetworkTab(QWidget):
         self.feed_abstract.setPlaceholderText("Select a paper to preview abstract...")
         feed_layout.addWidget(self.feed_abstract)
 
-        tabs.addTab(feed_tab, qta.icon('fa.rss'), "Paper Feed")
+        tabs.addTab(feed_tab, qta.icon('fa5s.rss'), "Paper Feed")
 
         # ── Discover tab (post day-one placeholder) ───────────────────
         discover_tab = QWidget()
@@ -312,7 +312,7 @@ class ResearcherNetworkTab(QWidget):
             "• Review table — you approve before anything is added\n"
             "• Co-authorship graph visualisation"))
         discover_layout.addStretch()
-        tabs.addTab(discover_tab, qta.icon('fa.share-alt'), "Discover")
+        tabs.addTab(discover_tab, qta.icon('fa5s.share-alt'), "Discover")
 
         layout.addWidget(tabs)
 

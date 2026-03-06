@@ -133,11 +133,11 @@ class ExperimentalTab(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         tabs = QTabWidget()
-        tabs.addTab(self._build_wizard_tab(),    qta.icon('fa.map'),         "Design Wizard")
-        tabs.addTab(self._build_cell_tab(),      qta.icon('fa.circle-o'),    "Cell Models")
-        tabs.addTab(self._build_organism_tab(),  qta.icon('fa.paw'),         "Organism Models")
-        tabs.addTab(self._build_dbtl_tab(),      qta.icon('fa.refresh'),     "DBTL Tracker")
-        tabs.addTab(self._build_ai_tab(),        qta.icon('fa.lightbulb-o'), "AI Advisor")
+        tabs.addTab(self._build_wizard_tab(),    qta.icon('fa5s.map'),         "Design Wizard")
+        tabs.addTab(self._build_cell_tab(),      qta.icon('fa5.circle'),    "Cell Models")
+        tabs.addTab(self._build_organism_tab(),  qta.icon('fa5s.paw'),         "Organism Models")
+        tabs.addTab(self._build_dbtl_tab(),      qta.icon('fa5s.sync'),     "DBTL Tracker")
+        tabs.addTab(self._build_ai_tab(),        qta.icon('fa5s.lightbulb'), "AI Advisor")
         layout.addWidget(tabs)
 
     # ── Sub-tab 1: Design Wizard ───────────────────────────────────────────────
@@ -181,7 +181,7 @@ class ExperimentalTab(QWidget):
 
         form_layout.addStretch()
 
-        self._gen_btn = QPushButton(qta.icon('fa.play'), "  Generate Roadmap")
+        self._gen_btn = QPushButton(qta.icon('fa5s.play'), "  Generate Roadmap")
         self._gen_btn.setStyleSheet(self._primary_btn_style())
         self._gen_btn.clicked.connect(self._generate_roadmap)
         form_layout.addWidget(self._gen_btn)
@@ -533,10 +533,10 @@ class ExperimentalTab(QWidget):
 
         # Toolbar
         bar = QHBoxLayout()
-        add_btn = QPushButton(qta.icon('fa.plus'), " Add Cycle")
+        add_btn = QPushButton(qta.icon('fa5s.plus'), " Add Cycle")
         add_btn.clicked.connect(self._add_dbtl_cycle)
         add_btn.setStyleSheet(self._primary_btn_style())
-        refresh_btn = QPushButton(qta.icon('fa.refresh'), " Refresh")
+        refresh_btn = QPushButton(qta.icon('fa5s.sync'), " Refresh")
         refresh_btn.clicked.connect(self._refresh_dbtl)
         bar.addWidget(add_btn)
         bar.addWidget(refresh_btn)
@@ -564,11 +564,11 @@ class ExperimentalTab(QWidget):
 
         # Action bar for selected cycle
         action_bar = QHBoxLayout()
-        self._advance_btn = QPushButton(qta.icon('fa.arrow-right'), " Advance Phase")
+        self._advance_btn = QPushButton(qta.icon('fa5s.arrow-right'), " Advance Phase")
         self._advance_btn.clicked.connect(self._advance_phase)
-        self._record_btn  = QPushButton(qta.icon('fa.pencil'),      " Record Results")
+        self._record_btn  = QPushButton(qta.icon('fa5s.pencil-alt'),      " Record Results")
         self._record_btn.clicked.connect(self._record_results)
-        self._learn_btn   = QPushButton(qta.icon('fa.graduation-cap'), " Record Learning")
+        self._learn_btn   = QPushButton(qta.icon('fa5s.graduation-cap'), " Record Learning")
         self._learn_btn.clicked.connect(self._record_learning)
         for btn in (self._advance_btn, self._record_btn, self._learn_btn):
             action_bar.addWidget(btn)
@@ -716,7 +716,7 @@ class ExperimentalTab(QWidget):
         layout.addWidget(desc)
 
         btn_bar = QHBoxLayout()
-        self._ai_btn = QPushButton(qta.icon('fa.lightbulb-o'), "  Get AI Advice")
+        self._ai_btn = QPushButton(qta.icon('fa5s.lightbulb'), "  Get AI Advice")
         self._ai_btn.setStyleSheet(self._primary_btn_style())
         self._ai_btn.clicked.connect(self._run_ai_advisor)
         btn_bar.addWidget(self._ai_btn)
