@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QFont, QColor
 import qtawesome as qta
+from .findings_widget import FindingsWidget
 import logging
 
 logger = logging.getLogger(__name__)
@@ -224,6 +225,16 @@ class MaterialsTab(QWidget):
         splitter.setStretchFactor(1, 3)
 
         layout.addWidget(splitter)
+
+        self._findings = FindingsWidget(
+            "materials",
+            placeholder="Key materials findings: promising candidates, fabrication insights, "
+                        "property comparisons, decisions made, strategy for material selection..."
+        )
+        layout.addWidget(self._findings)
+
+    def set_project_id(self, project_id: int) -> None:
+        self._findings.set_project_id(project_id)
 
     # ── Data loading ──────────────────────────────────────────────────
 

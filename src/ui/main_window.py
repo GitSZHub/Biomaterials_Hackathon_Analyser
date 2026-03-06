@@ -258,15 +258,18 @@ class MainWindow(QMainWindow):
 
         # ── Status strip ──────────────────────────────────────────────
         status_frame = QFrame()
-        status_frame.setMaximumHeight(70)
+        status_frame.setMinimumHeight(80)
+        status_frame.setMaximumHeight(90)
         status_frame.setStyleSheet("""
             QFrame {
                 background-color: #f8f9fa;
                 border: 1px solid #dee2e6;
                 border-radius: 5px;
+                padding: 4px;
             }
         """)
         status_layout = QGridLayout(status_frame)
+        status_layout.setContentsMargins(8, 6, 8, 6)
 
         self._papers_label      = self._make_stat(status_layout, "Papers Indexed",     "0", 0, 0)
         self._materials_label   = self._make_stat(status_layout, "Materials Analyzed", "0", 0, 1)
@@ -279,6 +282,8 @@ class MainWindow(QMainWindow):
     def _make_stat(self, layout, label, value, row, col):
         container = QFrame()
         cl = QVBoxLayout(container)
+        cl.setContentsMargins(4, 4, 4, 4)
+        cl.setSpacing(2)
         cl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         val = QLabel(value)
         val.setFont(QFont("Arial", 13, QFont.Weight.Bold))
@@ -418,11 +423,17 @@ class MainWindow(QMainWindow):
             pass
 
     def _propagate_project_id(self):
-        """Push current project ID to all tabs that log searches."""
-        try:
-            self.literature_tab.set_project_id(self._project_id)
-        except Exception:
-            pass
+        """Push current project ID to all tabs."""
+        for tab in [
+            self.literature_tab, self.researcher_tab, self.materials_tab,
+            self.business_tab, self.bio_tab, self.drug_tab,
+            self.regulatory_tab, self.experimental_tab,
+            self.tox_tab, self.synbio_tab, self.briefing_tab,
+        ]:
+            try:
+                tab.set_project_id(self._project_id)
+            except Exception:
+                pass
 
     def new_project(self):
         dlg = _NewProjectDialog(self)

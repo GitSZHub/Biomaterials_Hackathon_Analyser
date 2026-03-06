@@ -28,6 +28,7 @@ from PyQt6.QtWidgets import (
     QTextEdit, QVBoxLayout, QWidget,
 )
 import qtawesome as qta
+from .findings_widget import FindingsWidget
 
 logger = logging.getLogger(__name__)
 
@@ -149,6 +150,18 @@ class DrugTab(QWidget):
                     qta.icon("fa5s.magic"),     "AI Insight")
         self._tabs = tabs
         layout.addWidget(tabs)
+
+        self._findings = FindingsWidget(
+            "drug",
+            placeholder="Drug delivery findings: lead compounds identified, ADMET profile, "
+                        "PK model results, release strategy (bolus/sustained), drug-material "
+                        "compatibility, small molecule vs biologic decision, CRISPR/gene editing "
+                        "strategy if applicable..."
+        )
+        layout.addWidget(self._findings)
+
+    def set_project_id(self, project_id: int) -> None:
+        self._findings.set_project_id(project_id)
 
     # ── Compound Search tab ────────────────────────────────────────────────────
 

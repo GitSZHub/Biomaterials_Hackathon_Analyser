@@ -30,6 +30,7 @@ from PyQt6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QTextEdit, QVBoxLayout, QWidget,
 )
 import qtawesome as qta
+from .findings_widget import FindingsWidget
 
 logger = logging.getLogger(__name__)
 
@@ -215,6 +216,17 @@ class BioAnalysisTab(QWidget):
         self._tabs.addTab(self._build_volcano_tab(),    qta.icon("fa5s.circle"),        "Volcano Plot")
         self._tabs.addTab(self._build_ai_tab(),         qta.icon("fa5s.magic"),         "AI Insight")
         layout.addWidget(self._tabs)
+
+        self._findings = FindingsWidget(
+            "bio_analysis",
+            placeholder="Key biological findings: top DEGs, enriched pathways, "
+                        "GEO datasets used, gene targets of interest, pathway strategy "
+                        "(e.g. HIF-1 knockdown, Wnt activation), single-cell insights..."
+        )
+        layout.addWidget(self._findings)
+
+    def set_project_id(self, project_id: int) -> None:
+        self._findings.set_project_id(project_id)
 
     # ── GEO Search tab ─────────────────────────────────────────────────────────
 

@@ -31,6 +31,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout, QWidget,
 )
 import qtawesome as qta
+from .findings_widget import FindingsWidget
 
 logger = logging.getLogger(__name__)
 
@@ -218,6 +219,18 @@ class RegulatoryTab(QWidget):
         self._tabs.addTab(self._build_pathway_tab(),    qta.icon("fa5s.road"),       "Pathway Timeline")
         self._tabs.addTab(self._build_ai_tab(),         qta.icon("fa5s.magic"),      "AI Narrative")
         layout.addWidget(self._tabs)
+
+        self._findings = FindingsWidget(
+            "regulatory",
+            placeholder="Regulatory strategy findings: device classification (Class I/II/III), "
+                        "scenario (A/B/C/D), ISO 10993 tests required, biocompat score, "
+                        "critical risks identified, submission pathway (510k/PMA/ATMP), "
+                        "key regulatory milestones..."
+        )
+        layout.addWidget(self._findings)
+
+    def set_project_id(self, project_id: int) -> None:
+        self._findings.set_project_id(project_id)
 
     # ── Classifier tab ─────────────────────────────────────────────────────────
 

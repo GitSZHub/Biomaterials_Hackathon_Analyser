@@ -24,6 +24,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl
 from PyQt6.QtGui import QFont, QColor, QDesktopServices
 import qtawesome as qta
+from .findings_widget import FindingsWidget
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +96,16 @@ class BusinessTab(QWidget):
         tabs.addTab(self._build_patent_tab(),        qta.icon('fa5s.gavel'),        "Patents")
         tabs.addTab(self._build_strategy_tab(),      qta.icon('fa5s.lightbulb'), "Strategic Insight")
         layout.addWidget(tabs)
+
+        self._findings = FindingsWidget(
+            "business",
+            placeholder="Business strategy findings: market opportunity, key competitors, "
+                        "IP landscape, funding leads, SWOT conclusions, investor talking points..."
+        )
+        layout.addWidget(self._findings)
+
+    def set_project_id(self, project_id: int) -> None:
+        self._findings.set_project_id(project_id)
 
     # ── Sub-tab 1: Market Analysis ─────────────────────────────────────────────
 

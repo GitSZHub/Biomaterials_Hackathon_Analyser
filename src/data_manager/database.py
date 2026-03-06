@@ -525,6 +525,18 @@ class DatabaseManager:
 
             "CREATE INDEX IF NOT EXISTS idx_search_history_tab ON search_history(tab, searched_at)",
 
+            """
+            CREATE TABLE IF NOT EXISTS module_findings (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                project_id  INTEGER REFERENCES projects(id),
+                module      TEXT NOT NULL,
+                findings    TEXT NOT NULL DEFAULT '',
+                saved_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """,
+
+            "CREATE INDEX IF NOT EXISTS idx_findings_project ON module_findings(project_id, module)",
+
             # ── Indexes ───────────────────────────────────────────────
             "CREATE INDEX IF NOT EXISTS idx_papers_year   ON papers(year)",
             "CREATE INDEX IF NOT EXISTS idx_papers_doi    ON papers(doi)",

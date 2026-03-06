@@ -23,6 +23,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QFont, QColor
 import qtawesome as qta
+from .findings_widget import FindingsWidget
 
 logger = logging.getLogger(__name__)
 
@@ -157,6 +158,17 @@ class ExperimentalTab(QWidget):
         tabs.addTab(self._build_dbtl_tab(),      qta.icon('fa5s.sync'),     "DBTL Tracker")
         tabs.addTab(self._build_ai_tab(),        qta.icon('fa5s.lightbulb'), "AI Advisor")
         layout.addWidget(tabs)
+
+        self._findings = FindingsWidget(
+            "experimental",
+            placeholder="Experimental design decisions: chosen cell models, organism models, "
+                        "key assays selected, DBTL cycle plan, critical controls, "
+                        "timeline milestones, protocol deviations to note, go/no-go criteria..."
+        )
+        layout.addWidget(self._findings)
+
+    def set_project_id(self, project_id: int) -> None:
+        self._findings.set_project_id(project_id)
 
     # ── Sub-tab 1: Design Wizard ───────────────────────────────────────────────
 

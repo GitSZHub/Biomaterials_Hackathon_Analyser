@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QFont, QColor
 import qtawesome as qta
+from .findings_widget import FindingsWidget
 
 
 class PubMedSearchWorker(QThread):
@@ -153,6 +154,8 @@ class LiteratureTab(QWidget):
 
     def set_project_id(self, project_id: int) -> None:
         self._project_id = project_id
+        self._findings.set_project_id(project_id)
+        self._load_recent_searches()
 
     def init_ui(self):
         layout = QVBoxLayout(self)
@@ -160,21 +163,25 @@ class LiteratureTab(QWidget):
 
         # ── Search Section ────────────────────────────────────────────
         search_frame = QFrame()
+        search_frame.setMinimumHeight(220)
         search_frame.setStyleSheet("""
             QFrame {
                 background-color: #f8f9fa;
                 border: 1px solid #dee2e6;
                 border-radius: 8px;
-                padding: 10px;
             }
         """)
         search_layout = QVBoxLayout(search_frame)
+        search_layout.setContentsMargins(12, 10, 12, 10)
+        search_layout.setSpacing(6)
 
-        search_header = QLabel("📚 Literature Search & Analysis")
+        search_header = QLabel("Literature Search & Analysis")
         search_header.setFont(QFont("Arial", 14, QFont.Weight.Bold))
         search_layout.addWidget(search_header)
 
         grid = QGridLayout()
+        grid.setVerticalSpacing(6)
+        grid.setHorizontalSpacing(8)
 
         # Row 0 — query
         grid.addWidget(QLabel("Search Query:"), 0, 0)
@@ -430,6 +437,13 @@ class LiteratureTab(QWidget):
         splitter.setStretchFactor(1, 2)
 
         layout.addWidget(splitter)
+
+        self._findings = FindingsWidget(
+            "literature",
+            placeholder="Key findings from literature: important papers, recurring themes, "
+                        "identified targets, gaps in the field, strategy implications..."
+        )
+        layout.addWidget(self._findings)
 
     # ── Recent-search helpers ─────────────────────────────────────────
 

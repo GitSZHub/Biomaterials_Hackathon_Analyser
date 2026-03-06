@@ -146,6 +146,9 @@ class BriefingTab(QWidget):
         self._roadmap_obj = roadmap
         self._dbtl_obj    = dbtl
 
+    def set_project_id(self, project_id: int) -> None:
+        self._project_id = project_id
+
     def set_module_tabs(self, business_tab=None, experimental_tab=None) -> None:
         """
         Wire in other tab instances so context assembly can pull their live objects
@@ -388,6 +391,23 @@ class BriefingTab(QWidget):
 
     def _on_context_ready(self, ctx: BriefingContext):
         self._context = ctx
+
+        # Append saved module findings to the context
+        try:
+            from data_manager import crud
+            project_id = getattr(self, "_project_id", None)
+            findings_rows = crud.get_findings(project_id=project_id)
+            if findings_rows:
+                findings_text = "\n\n".join(
+                    f"=== {r['module'].upper()} FINDINGS ===\n{r['findings']}"
+                    for r in findings_rows if r.get("findings", "").strip()
+                )
+                if findings_text:
+                    existing = getattr(ctx, "user_context", "") or ""
+                    ctx.user_context = (existing + "\n\n" + findings_text).strip()
+        except Exception:
+            pass
+
         lines = []
         if ctx.project_name:
             lines.append(f"Project: {ctx.project_name}")

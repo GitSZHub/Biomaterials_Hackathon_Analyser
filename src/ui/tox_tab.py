@@ -30,6 +30,7 @@ from PyQt6.QtWidgets import (
     QTextEdit, QVBoxLayout, QWidget,
 )
 import qtawesome as qta
+from .findings_widget import FindingsWidget
 
 logger = logging.getLogger(__name__)
 
@@ -195,6 +196,17 @@ class ToxTab(QWidget):
         self._tabs.addTab(self._build_aop_tab(),     qta.icon("fa5s.sitemap"),  "AOP")
         self._tabs.addTab(self._build_pbpk_tab(),    qta.icon("fa5s.chart-line"),"PBPK")
         layout.addWidget(self._tabs)
+
+        self._findings = FindingsWidget(
+            "toxicology",
+            placeholder="Toxicology findings: compounds flagged by CompTox, ADMET red flags, "
+                        "AOP pathways triggered, PBPK model conclusions, ISO 10993 test results, "
+                        "biocompat score, mitigation strategies for identified hazards..."
+        )
+        layout.addWidget(self._findings)
+
+    def set_project_id(self, project_id: int) -> None:
+        self._findings.set_project_id(project_id)
 
     # ── Server Control tab ────────────────────────────────────────────────────
 

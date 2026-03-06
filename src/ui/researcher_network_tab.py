@@ -24,6 +24,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QFont, QColor
 import qtawesome as qta
+from .findings_widget import FindingsWidget
 
 
 # ── Background workers ────────────────────────────────────────────────────────
@@ -325,6 +326,17 @@ class ResearcherNetworkTab(QWidget):
         tabs.addTab(discover_tab, qta.icon('fa5s.share-alt'), "Discover")
 
         layout.addWidget(tabs)
+
+        self._findings = FindingsWidget(
+            "researchers",
+            placeholder="Researcher network findings: key groups to contact, collaboration "
+                        "opportunities, cluster leaders, researchers to invite to review, "
+                        "conference connections, potential advisors or co-investigators..."
+        )
+        layout.addWidget(self._findings)
+
+    def set_project_id(self, project_id: int) -> None:
+        self._findings.set_project_id(project_id)
 
     # ── Data loading ──────────────────────────────────────────────────────────
 

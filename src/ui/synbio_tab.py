@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QFont, QColor
 import qtawesome as qta
+from .findings_widget import FindingsWidget
 
 # ── Lazy engine imports ───────────────────────────────────────────────────────
 def _igem():
@@ -1177,3 +1178,14 @@ class SynBioTab(QWidget):
         tabs.addTab(self.bioproduction_tab, qta.icon('fa5s.industry'),   "Bioproduction")
 
         layout.addWidget(tabs)
+
+        self._findings = FindingsWidget(
+            "synbio",
+            placeholder="Synthetic biology strategy: parts selected (iGEM/SynBioHub), "
+                        "chassis organism chosen, DBTL cycle plan, genetic edits designed, "
+                        "living material approach, bioproduction system, Scenario C triggers..."
+        )
+        layout.addWidget(self._findings)
+
+    def set_project_id(self, project_id: int) -> None:
+        self._findings.set_project_id(project_id)

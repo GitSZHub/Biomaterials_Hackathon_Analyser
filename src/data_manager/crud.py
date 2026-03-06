@@ -733,6 +733,75 @@ def save_stakeholder_analysis(project_id: int, stakeholders: List, matrix: Dict)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Module findings
+# ──────────────────────────────────────────────────────────────────────────────
+
+def save_findings(module: str, findings: str,
+                  project_id: Optional[int] = None) -> None:
+    """Upsert findings text for a module. Replaces any existing row for the
+    same project+module combination."""
+    try:
+        db = get_db()
+        with db.connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO module_findings (project_id, module, findings, saved_at)
+                VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT DO NOTHING
+                """,
+                (project_id, module, findings),
+            )
+            # Update in case of existing row
+            conn.execute(
+                """
+                UPDATE module_findings
+                SET findings=?, saved_at=CURRENT_TIMESTAMP
+                WHERE project_id IS ? AND module=?
+                  AND id=(
+                      SELECT id FROM module_findings
+                      WHERE project_id IS ? AND module=?
+                      ORDER BY saved_at DESC LIMIT 1
+                  )
+                """,
+                (findings, project_id, module, project_id, module),
+            )
+    except Exception:
+        pass
+
+
+def get_findings(module: Optional[str] = None,
+                 project_id: Optional[int] = None) -> List[Dict]:
+    """Return saved findings. If module is given, return just that module's
+    latest entry. Otherwise return all modules for the project."""
+    try:
+        db = get_db()
+        with db.connection() as conn:
+            if module:
+                row = conn.execute(
+                    """
+                    SELECT module, findings, saved_at FROM module_findings
+                    WHERE project_id IS ? AND module=?
+                    ORDER BY saved_at DESC LIMIT 1
+                    """,
+                    (project_id, module),
+                ).fetchone()
+                return [_row_to_dict(row)] if row else []
+            else:
+                rows = conn.execute(
+                    """
+                    SELECT module, findings, saved_at FROM module_findings
+                    WHERE project_id IS ?
+                    GROUP BY module
+                    HAVING saved_at=MAX(saved_at)
+                    ORDER BY module
+                    """,
+                    (project_id,),
+                ).fetchall()
+                return _rows_to_dicts(rows)
+    except Exception:
+        return []
+
+
 # Search history
 # ──────────────────────────────────────────────────────────────────────────────
 
