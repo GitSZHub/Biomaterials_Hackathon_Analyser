@@ -1,6 +1,6 @@
 # Biomaterials Hackathon Analyser — Full Architecture Decisions
-# Last updated: 2026-03-05
-# Status: Architecture design phase. Coding has NOT started.
+# Last updated: 2026-03-06
+# Status: BUILD PHASE. Steps 1-11 complete + Toxicology tab built. See Build Order below.
 
 ---
 
@@ -59,173 +59,200 @@ depth-first build — everything that exists on day one works properly.
 ```
 src/
 ├── literature_engine/
-│   ├── pubmed_crawler.py          EXISTS — functional, not wired to UI
-│   ├── researcher_tracker.py      NEW — researcher DB, sync, feed
-│   ├── network_discovery.py       NEW — BFS co-author expansion
-│   ├── bulk_importer.py           NEW — CSV/paste batch resolution
-│   ├── knowledge_extractor.py     NEW — AI fact extraction from papers
-│   └── doi_client.py              NEW — CrossRef + Unpaywall lookup
+│   ├── pubmed_crawler.py          BUILT — functional, wired to Literature tab
+│   ├── researcher_tracker.py      BUILT — researcher DB, sync, feed
+│   ├── network_discovery.py       NOT YET — BFS co-author expansion
+│   ├── bulk_importer.py           NOT YET — CSV/paste batch resolution
+│   ├── knowledge_extractor.py     BUILT — AI fact extraction from papers
+│   └── doi_client.py              BUILT — CrossRef + Unpaywall lookup
 │
 ├── materials_engine/
-│   ├── topic_tree.py              NEW — material taxonomy + navigation
-│   ├── materials_db.py            NEW — local SQLite materials KB
-│   └── characterisation.py        NEW — properties + comparison viz
+│   ├── topic_tree.py              BUILT — material taxonomy + navigation
+│   ├── materials_db.py            BUILT — local SQLite materials KB
+│   └── characterisation.py       BUILT — properties + comparison viz
 │
 ├── bio_engine/
-│   ├── geo_client.py              NEW — GEO dataset query + download
-│   ├── arrayexpress_client.py     NEW — European dataset source
-│   ├── cellxgene_client.py        NEW — single-cell, CELLxGENE Census API
-│   ├── single_cell_portal.py      NEW — Broad Institute datasets
-│   ├── human_cell_atlas.py        NEW — reference cell type data
-│   ├── transcriptomics.py         NEW — bulk DEG analysis, volcano, heatmap
-│   ├── single_cell.py             NEW — Scanpy pipeline (QC, UMAP, clustering,
-│   │                                     annotation, diff abundance, diff expression)
-│   ├── deconvolution.py           NEW — bulk RNA -> cell type estimates
-│   ├── pathway_analysis.py        NEW — KEGG/Reactome enrichment
-│   ├── metabolomics.py            NEW — pathway overlay, PCA/UMAP
-│   ├── metabolomics_client.py     NEW — MetaboLights + Metabolomics Workbench queries
-│   ├── sequencing_advisor.py      NEW — technology selection logic (10x/ONT/PacBio/Spatial)
-│   ├── multiomics_integrator.py   NEW — MOFA/MixOmics joint pathway enrichment
-│   ├── flow_data_processor.py     NEW — FCS file import, gating logic, population stats
-│   └── tissue_interaction.py      NEW — tissue response modelling + timeline
+│   ├── geo_client.py              BUILT — GEO dataset query + download
+│   ├── arrayexpress_client.py     NOT YET — European dataset source
+│   ├── cellxgene_client.py        BUILT — single-cell, CELLxGENE Census API
+│   ├── single_cell_portal.py      NOT YET — Broad Institute datasets
+│   ├── human_cell_atlas.py        NOT YET — reference cell type data
+│   ├── transcriptomics.py         BUILT — bulk DEG analysis, volcano, heatmap
+│   ├── single_cell.py             BUILT — Scanpy pipeline (QC, UMAP, clustering,
+│   │                                       annotation, diff abundance, diff expression)
+│   ├── deconvolution.py           NOT YET — bulk RNA -> cell type estimates
+│   ├── pathway_analysis.py        NOT YET — KEGG/Reactome enrichment
+│   ├── metabolomics.py            NOT YET — pathway overlay, PCA/UMAP
+│   ├── metabolomics_client.py     NOT YET — MetaboLights + Metabolomics Workbench
+│   ├── sequencing_advisor.py      NOT YET — technology selection logic
+│   ├── multiomics_integrator.py   NOT YET — MOFA/MixOmics joint pathway enrichment
+│   ├── flow_data_processor.py     NOT YET — FCS file import, gating logic
+│   └── tissue_interaction.py      NOT YET — tissue response modelling + timeline
 │
 ├── drug_engine/
-│   ├── pubchem_client.py          NEW — compound lookup (free, no key)
-│   ├── chembl_client.py           NEW — bioactivity + targets (free)
-│   ├── drugbank_client.py         NEW — PK parameters (free academic)
-│   └── pk_models.py               NEW — Level 1-3 PK models
+│   ├── pubchem_client.py          BUILT — compound lookup (free, no key)
+│   ├── chembl_client.py           BUILT — bioactivity + targets (free)
+│   ├── drugbank_client.py         BUILT — PK parameters (free academic)
+│   └── pk_models.py               BUILT — Level 1-3 PK models
 │
 ├── experimental_engine/
-│   ├── cell_models_db.py          NEW — cell line + organoid KB
-│   ├── organism_models_db.py      NEW — in vivo model KB
-│   ├── experimental_designer.py   NEW — roadmap generation
-│   ├── protocol_client.py         NEW — protocols.io integration
-│   ├── assay_recommender.py       NEW — assay suggestion engine
-│   ├── microscopy_advisor.py      NEW — technique selector, sample prep, public image repos
-│   ├── proteomics_client.py       NEW — DDA/DIA workflow, PRIDE/UniProt/STRING queries
-│   └── flow_cytometry_advisor.py  NEW — panel design, marker selection, FCS import
+│   ├── cell_models_db.py          BUILT — cell line + organoid KB
+│   ├── organism_models_db.py      BUILT — in vivo model KB
+│   ├── experimental_designer.py   BUILT — ExperimentalDesigner, ExperimentalRoadmap
+│   ├── dbtl_tracker.py            BUILT — DBTLTracker (SQLite + in-memory fallback)
+│   ├── protocol_client.py         NOT YET — protocols.io integration
+│   ├── assay_recommender.py       NOT YET — assay suggestion engine
+│   ├── microscopy_advisor.py      NOT YET — technique selector, public image repos
+│   ├── proteomics_client.py       NOT YET — DDA/DIA workflow, PRIDE/STRING queries
+│   └── flow_cytometry_advisor.py  NOT YET — panel design, FCS import
 │
 ├── regulatory_engine/
-│   ├── iso10993.py                NEW — full test matrix + logic
-│   ├── device_classifier.py       NEW — Class I/II/III + ATMP determination
-│   ├── pathway_mapper.py          NEW — FDA/CE/ATMP pathway roadmaps
-│   ├── biocompat_scorer.py        NEW — material safety scoring (B+C)
-│   └── combination_products.py    NEW — drug-device + ATMP combo rules
+│   ├── iso10993_assessor.py       BUILT — ISO10993Assessor(comptox, aop, admet)
+│   ├── device_classifier.py       BUILT — Class I/II/III + ATMP detection
+│   ├── pathway_mapper.py          BUILT — FDA/CE/ATMP timeline + milestones
+│   ├── biocompat_scorer.py        BUILT — composite 0-100 (40% CompTox + 30% ADMET + 30% AOP)
+│   └── combination_products.py    BUILT — drug-device + ATMP combo rules
+│
+├── tox_engine/                    BUILT — all 8 files (new module, added this session)
+│   ├── mcp_client.py              BUILT — MCPClient.call_tool(), MCPError, MCPToolResult
+│   ├── server_manager.py          BUILT — ToxServerManager, 4 ServerConfig entries
+│   ├── admet_client.py            BUILT — predict_admet(smiles), render_structure()
+│   ├── comptox_client.py          BUILT — lookup_by_name(), screen_material_components()
+│   ├── aop_client.py              BUILT — map_chemical_to_aops(), search_aops()
+│   ├── pbpk_client.py             BUILT — load_model(), set_parameter(), run_simulation()
+│   ├── iso10993_assessor.py       BUILT — wraps regulatory_engine version + MCP enrichment
+│   ├── biocompat_scorer.py        BUILT — wraps regulatory_engine version + MCP enrichment
+│   └── workers.py                 BUILT — ADMETWorker, CompToxWorker, AOPWorker,
+│                                          ISO10993Worker, BiocCompatScorerWorker,
+│                                          ServerHealthWorker
 │
 ├── ai_engine/
-│   ├── llm_client.py              NEW — Claude primary, GPT-4o fallback
-│   ├── prompt_templates.py        NEW — all prompts, editable, versioned
-│   ├── knowledge_card_gen.py      NEW — material knowledge cards
-│   ├── briefing_gen.py            NEW — Technical + Executive briefings
-│   ├── paper_summariser.py        NEW — per-paper summaries
-│   └── biocompat_predictor.py     NEW — structural analogy reasoning
+│   ├── llm_client.py              BUILT — Claude primary, GPT-4o fallback
+│   ├── prompt_templates.py        BUILT — all prompts, editable, versioned
+│   ├── knowledge_card_gen.py      BUILT — material knowledge cards
+│   ├── briefing_gen.py            BUILT — Technical + Executive briefings
+│   ├── paper_summariser.py        NOT YET — per-paper summaries
+│   └── biocompat_predictor.py     NOT YET — structural analogy reasoning
 │
-├── business_intelligence/
-│   ├── market_intelligence.py     NEW — market size, segmentation, epidemiology
-│   ├── competitive_landscape.py   NEW — competitor mapping, positioning
-│   ├── clinicaltrials_client.py   NEW — ClinicalTrials.gov API
-│   ├── patent_analyzer.py         NEW — USPTO + EPO + Lens.org queries
-│   ├── funding_intelligence.py    NEW — Crunchbase + NIH Reporter + ERC
-│   ├── regulatory_intelligence.py NEW — FDA approval database analysis
-│   ├── stakeholder_mapper.py      NEW — stakeholder profiles + matrix
-│   ├── swot_generator.py          NEW — evidence-grounded SWOT + strategic insight
-│   └── strategic_summary.py       NEW — synthesises all BI + Claude layer
+├── briefing_engine/               BUILT — new module
+│   ├── context_assembler.py       BUILT — BriefingContext, ContextAssembler (8 harvesters)
+│   ├── briefing_generator.py      BUILT — 10 Technical + 10 Executive sections
+│   └── __init__.py                BUILT
 │
-├── synthetic_biology_engine/
-│   ├── igem_client.py             NEW — iGEM Registry + project wikis API
-│   ├── synbiohub_client.py        NEW — SynBioHub SPARQL queries
-│   ├── addgene_client.py          NEW — plasmid repository lookup
-│   ├── parts_browser.py           NEW — search biological parts by function
-│   ├── circuit_designer.py        NEW — DBTL design wizard logic
-│   ├── dbtl_tracker.py            NEW — track design iterations per project
-│   ├── living_materials.py        NEW — synbio-biomaterial integration layer
-│   ├── genetic_editor.py          NEW — editing technology selector + guide RNA awareness
-│   ├── delivery_advisor.py        NEW — delivery system recommender by cell type
-│   └── bioproduction_planner.py   NEW — bioreactor type + scale + cost planning
+├── business_intelligence/         BUILT — full module
+│   ├── market_kb.py               BUILT — 7 hardcoded MarketSegment entries
+│   ├── stakeholder_kb.py          BUILT — 14 Stakeholder entries, typically_missed flags
+│   ├── swot_engine.py             BUILT — SWOTAnalysis, SWOTEngine (versioned)
+│   ├── strategic_summary.py       BUILT — StrategicSummaryEngine, 5 audience modes
+│   └── __init__.py                BUILT
 │
-├── data_manager/                  NOT YET DESIGNED
-│   └── ...
+├── synthetic_biology_engine/      NOT YET BUILT
+│   └── (see architecture detail below)
+│
+├── data_manager/                  BUILT — project context, DB, CRUD
+│   ├── database_manager.py        BUILT
+│   ├── project_context.py         BUILT — ProjectContext dataclass
+│   └── crud.py                    BUILT
 │
 └── utils/
-    ├── config.py                  EXISTS
-    ├── visualisation.py           NEW — shared Plotly/Matplotlib helpers
-    └── export.py                  NEW — PDF, MD, PNG/SVG export
+    ├── config.py                  BUILT
+    ├── visualisation.py           NOT YET — shared Plotly/Matplotlib helpers
+    └── export.py                  NOT YET — PDF, MD, PNG/SVG export
 ```
 
 ---
 
 ## UI Tab Structure
 
+Status codes: BUILT = exists and wired | PARTIAL = exists, some sub-tabs stubbed | NOT YET = not started
+
 ```
-Main Window
-├── Literature Analysis
+Main Window (main_window.py — BUILT)
+├── Literature Analysis            literature_tab.py — BUILT
 │   ├── Search                   (global topic search, real PubMed)
 │   ├── Paper Detail             (abstract, AI summary, extract data)
 │   ├── PDF Inbox                (watched folder, DOI paste)
 │   └── Annotations              (your notes, tags, links to KB)
 │
-├── Researcher Network
+├── Researcher Network             researcher_network_tab.py — BUILT
 │   ├── My Network               (graph view + researcher list)
 │   ├── Feed                     (new papers from tracked researchers)
-│   └── Discover                 (network expansion wizard — post day one)
+│   └── Discover                 (network expansion wizard — post hackathon)
 │
-├── Materials Lab
+├── Materials Modeling             materials_tab.py — BUILT
 │   ├── Topic Tree               (navigate material taxonomy)
 │   ├── Knowledge Card           (AI-generated, editable, confidence tiered)
 │   ├── Comparison               (radar charts, tables)
 │   └── Fabrication              (method compatibility matrix)
 │
-├── Bio Analysis
+├── Business Intelligence          business_tab.py — BUILT (6 sub-tabs)
+│   ├── Market Analysis          (7 segments, tissue filter, metric cards)
+│   ├── Competitive              (add competitors, stage-coloured table, syncs SWOT)
+│   ├── Stakeholders             (14 types, commonly-missed filter, engagement strategy)
+│   ├── SWOT                     (4-quadrant, stakeholder-lens selector, add item)
+│   ├── Patents                  (Google Patents + Espacenet links, manual tracker)
+│   └── Strategic Insight        (Claude synthesis, 5 audience modes, HTML output)
+│
+├── Bio Analysis                   bio_analysis_tab.py — BUILT
 │   ├── Transcriptomics          (GEO query, volcano, heatmap — bulk)
 │   ├── Single Cell              (CELLxGENE, UMAP, clustering, diff abundance)
-│   ├── Sequencing Advisor       (technology selection: 10x / ONT / PacBio / Spatial)
-│   ├── Metabolomics             (GC-MS/LC-MS/NMR data, pathway overlay, PCA/UMAP)
-│   ├── Multi-Omics              (MOFA integration, joint pathway enrichment)
-│   ├── Proteomics               (DDA/DIA workflow, protein corona, STRING PPI)
-│   ├── Flow Cytometry           (panel design, population stats, phospho-flow)
-│   └── Tissue Interaction       (response timeline, matrigel caveat)
+│   ├── Sequencing Advisor       (NOT YET — technology selection)
+│   ├── Metabolomics             (NOT YET — pathway overlay, PCA/UMAP)
+│   ├── Multi-Omics              (NOT YET — MOFA integration)
+│   ├── Proteomics               (NOT YET — DDA/DIA, protein corona, STRING PPI)
+│   ├── Flow Cytometry           (NOT YET — panel design, phospho-flow)
+│   └── Tissue Interaction       (NOT YET — response timeline, Matrigel caveat)
 │
-├── Drug Delivery
+├── Drug Delivery                  drug_tab.py — BUILT
 │   ├── Drug Lookup              (PubChem/ChEMBL/DrugBank)
 │   ├── Release Kinetics         (PK model curves, Level 1-3)
 │   └── Material Compatibility   (drug-material pairing, combination flag)
 │
-├── Experimental Design
-│   ├── Cell Models              (KB browser + recommender)
-│   ├── Organism Models          (in vivo model selection)
-│   ├── Assay Recommender        (analytical technology suggestion by question)
-│   ├── Microscopy Advisor       (technique selector, sample prep, public image datasets)
-│   ├── DBTL Tracker             (design iteration history)
-│   └── Roadmap                  (generated experimental plan)
+├── Regulatory                     regulatory_tab.py — BUILT (5 sub-tabs)
+│   ├── Device Classifier        (Scenarios A/B/C/D, FDA class, ATMP flag)
+│   ├── ISO 10993                (required test matrix; enriched by live MCP clients)
+│   ├── Biocompat Score          (0-100 composite; enriched by live MCP clients)
+│   ├── Pathway Timeline         (milestone cards, duration, cost)
+│   └── AI Narrative             (Claude 4-5 paragraph regulatory strategy)
 │
-├── Synthetic Biology
-│   ├── Parts Browser            (iGEM + SynBioHub search by function)
-│   ├── Genetic Editor           (CRISPR/editing strategy selector + delivery advisor)
-│   ├── Bioproduction Planner    (organism + bioreactor + scale + cost)
-│   ├── Circuit Designer         (DBTL wizard — genetic circuit design)
-│   ├── Living Materials         (connect synbio design to scaffold)
-│   └── Addgene Lookup           (find and order plasmids)
+│   NOTE: ISO 10993 Assessor and BiocCompatScorer accept live tox_engine clients.
+│   When ToxTab MCP servers are running, scoring is enriched automatically.
+│   When servers are offline, graceful degradation to rule-based defaults.
 │
-├── Regulatory
-│   ├── Device Classifier        (Class I/II/III + ATMP detection)
-│   ├── ISO 10993                (required test matrix)
-│   ├── Biocompat Score          (material safety by contact type, confidence tier)
-│   └── Pathway Map              (FDA/CE/ATMP timeline + milestones)
+├── Experimental Design            experimental_tab.py — BUILT (5 sub-tabs)
+│   ├── Design Wizard            (tissue/scenario/resources → staged roadmap cards)
+│   ├── Cell Models              (filterable table, detail panel)
+│   ├── Organism Models          (filter by 3Rs/ISO/size/tissue, detail panel)
+│   ├── DBTL Tracker             (phase-coloured table, Add/Advance/Results/Learning)
+│   └── AI Advisor               (Claude analyses roadmap + DBTL history)
 │
-├── Business Intelligence
-│   ├── Market Analysis          (size, segmentation, epidemiology)
-│   ├── Competitive Landscape    (competitors, clinical trials)
-│   ├── Patent Landscape         (USPTO + EPO + Lens.org, white space)
-│   ├── Funding Intelligence     (VC, grants, M&A)
-│   ├── Stakeholder Map          (full stakeholder profiles + matrix)
-│   ├── SWOT Analysis            (evidence-grounded, versioned, stakeholder-filtered)
-│   └── Strategic Summary        (one-page synthesis)
+├── Toxicology                     tox_tab.py — BUILT (5 sub-tabs) [NEW]
+│   ├── Server Control           (start/stop 4 MCP servers, health polling, bulk actions)
+│   ├── CompTox                  (EPA chemical hazard, risk tier, GHS, NOAEL/OPERA)
+│   ├── ADMET                    (from SMILES, 30+ endpoints, toxicity flags, SVG render)
+│   ├── AOP                      (AOP-Wiki, MIE → Key Events → Adverse Outcome chain)
+│   └── PBPK                     (OSP Suite .pkml, param editor, PK curve + metrics)
 │
-└── Briefing Builder
-    ├── Content Selector         (choose modules to include)
-    ├── Mode Toggle              (Technical / Executive)
-    ├── Prompt Editor            (visible, editable AI prompt)
-    └── Export                   (PDF, MD)
+│   KEY ARCHITECTURE:
+│   - ToxServerManager singleton (get_tox_manager()) shared across app
+│   - ToxTab.get_live_clients() returns {comptox, admet, aop} for running servers
+│   - RegulatoryTab wired via set_tox_tab(tox_tab) — live clients injected automatically
+│   - MCP servers: admet:8082, comptox:8083, aop:8084, pbpk:8085
+│   - CompTox requires EPA_COMPTOX_API_KEY env var (others need no key)
+│   - closeEvent on MainWindow stops all MCP server subprocesses cleanly
+│
+└── Briefing Generator             briefing_tab.py — BUILT (flagship)
+    ├── Mode toggle              (Technical / Executive radio buttons)
+    ├── Section checklist        (10 sections each, All/None buttons)
+    ├── Context panel            (editable QPlainTextEdit, full assembled context)
+    ├── Live Output              (QTextEdit, sections append as generated)
+    └── Export                   (Markdown / HTML / plain text via QFileDialog)
+
+    KEY ARCHITECTURE:
+    - BriefingWorker generates sections one at a time, cancellable via QMutex
+    - ContextAssembler.assemble() harvests from all 8 modules (all in try/except)
+    - set_live_objects(swot, roadmap, dbtl) passes in-memory objects from other tabs
+    - _markdown_to_html() built-in converter, no external deps
 ```
 
 ---
@@ -1498,6 +1525,65 @@ Public repositories:
 
 ---
 
+## Toxicology Engine — Detail
+
+Built as standalone tox_engine/ module. Four MCP servers + shared manager singleton.
+
+### Server Architecture
+ToxServerManager — singleton accessed via get_tox_manager() in tox_tab.py.
+Each server is a local HTTP subprocess launched via Python -m <package> --port <n>.
+
+  admet   port 8082  ADMETlab MCP   predict_admet(smiles), render_structure(smiles)
+                                     No API key required. Absorption/Distribution/
+                                     Metabolism/Excretion/Toxicity. 30+ endpoints.
+                                     Toxicity flags: ames_mutagenicity, herg_inhibition,
+                                     hepatotoxicity, skin_sensitization, eye_irritation, LD50.
+
+  comptox port 8083  CompTox MCP    lookup_by_name(name), screen_material_components(list)
+                                     EPA_COMPTOX_API_KEY required. Runs in demo mode without.
+                                     Returns: ChemicalHazardProfile with risk_tier property,
+                                     GHS codes, carcinogenicity, acute toxicity, NOAEL/LOAEL,
+                                     OPERA predictions (log P, BCF, Henry's law, etc).
+
+  aop     port 8084  AOP MCP        map_chemical_to_aops(chemical), search_aops(query)
+                                     No API key required. AOP-Wiki Adverse Outcome Pathways.
+                                     Returns: AOPMappingResult, AOPSummary, KeyEvent list.
+                                     Full MIE → Key Events → Adverse Outcome chain.
+
+  pbpk    port 8085  PBPK MCP       load_model(path), set_parameter(name, value),
+                                     run_simulation(), run_population_simulation(n=100)
+                                     sensitivity_analysis(), list_parameters()
+                                     No API key required. OSP Suite PK-Sim .pkml models.
+                                     Returns: SimulationResult with time_points, concentrations,
+                                     pk_metrics (Cmax, Tmax, AUC, t_half, CL, Vd).
+
+### Integration with Regulatory Engine
+ISO10993Assessor(comptox=None, aop=None, admet=None):
+  - Without clients: rule-based test matrix only
+  - With clients: enriches with live chemical hazard flags + AOP concerns + ADMET alerts
+  - regulatory_tab.ISO10993Worker passes live_clients from ToxTab.get_live_clients()
+
+BiocCompatScorer(comptox=None, admet=None, aop=None):
+  - Composite 0-100 score: 40% CompTox hazard + 30% ADMET + 30% AOP pathway burden
+  - Without clients: defaults to mid-range score, clearly flagged
+  - regulatory_tab.BiocompatWorker passes live_clients from ToxTab.get_live_clients()
+
+### Pre-built QThread Workers (workers.py)
+All workers take their client in __init__ and emit result_ready / error_occurred.
+ADMETWorker(admet_client, smiles)
+CompToxWorker(comptox_client, components: list)  — emits list of ChemicalHazardProfile
+AOPWorker(aop_client, components: list)          — emits dict[str, AOPMappingResult]
+ISO10993Worker(assessor, material, contact_type, contact_duration, components)
+BiocCompatScorerWorker(scorer, material, components, drug_smiles=[])
+ServerHealthWorker(manager)                       — emits dict[server_name, bool]
+
+### Graceful Degradation
+All clients are optional. Regulatory engine works without them.
+ToxTab shows offline indicator (grey dot) when servers not running.
+Enrichment activates automatically when servers come online — no manual intervention needed.
+
+---
+
 ## Business Intelligence Engine — Detail
 
 ### Scope (confirmed)
@@ -1790,57 +1876,64 @@ Requirement: sources listed in output, speculative content flagged
 
 ---
 
-## What Is NOT Yet Designed
-1. Data Management module
-   - Project save/load/export
-   - Own experimental data upload pipeline
-   - Cache management UI (view cache size, clear entries)
-   - Export format decisions (PDF confirmed, PowerPoint TBD)
+## What Is NOT Yet Built
 
-2. Settings + Configuration
-   - API key management (Claude, OpenAI, NCBI, DrugBank)
-   - User preferences
-   - Theme (light/dark)
+### Priority for next session
+1. Synthetic Biology tab — iGEM/SynBioHub parts browser, DBTL wizard, living materials,
+   genetic editor (editing strategy + delivery advisor), bioproduction planner
+2. Assay Recommender — Claude-driven analytical technology suggestion by research question
+3. Microscopy Advisor — technique selector, sample prep, public image repos
+4. Proteomics Advisor — DDA/DIA workflow, protein corona, STRING PPI queries
+5. Flow Cytometry Advisor — panel design, phospho-flow, FCS file import
 
-3. Error handling + offline behaviour
-   - What happens when APIs are unavailable
-   - Graceful degradation
-
-4. Pre-cache script
-   - Run night before hackathon
-   - Downloads selected GEO datasets, pre-populates materials KB
+### Post-hackathon / Phase 2
+- Sequencing advisor (10x / ONT / PacBio / Spatial technology selection)
+- Metabolomics viewer + MetaboLights client
+- Multi-omics integration (MOFA/MixOmics)
+- ArrayExpress, Single Cell Portal, Human Cell Atlas clients
+- Network discovery (BFS co-author expansion)
+- Bioproduction planner (bioreactor + scale + cost)
+- ATMP pathway full detail (EMA ATMP SME programme, combined ATMP rules)
+- Level 3-4 PK models (compartmental + tissue distribution)
+- Full pathway analysis (KEGG/Reactome enrichment)
+- Settings + Configuration tab (API key management, themes)
+- Pre-cache script (GEO datasets + materials KB for hackathon)
+- Own IP strategy (patent drafting suggestions)
+- ClinicalTrials.gov monitoring feed
+- Data Management UI (cache view, project export)
 
 ---
 
-## Build Order (Day One Priority)
-1.  Fix missing __init__.py files in src/ and submodules
-2.  Wire real PubMed search to Literature tab (crawler exists, not connected)
-3.  Claude API client (llm_client.py) — needed by multiple modules
-4.  Researcher Network tab — manual add + basic feed
-5.  Materials engine — topic tree + AI knowledge cards
-6.  Bio engine — GEO client + bulk transcriptomics viz (volcano, heatmap)
-7.  Drug engine — PubChem/ChEMBL/DrugBank + Level 1-2 PK models
-8.  Regulatory engine — ISO 10993 matrix + device classifier + scenario detection
-9.  Experimental design engine — cell model KB + DBTL roadmap generator
-10. Business Intelligence — market + competitive + patent + stakeholder + SWOT
-11. Briefing generator — pulls from all modules, Technical + Executive modes
+## Build Order — Completed vs Remaining
 
-Post day-one:
-- Single-cell analysis (CELLxGENE + Scanpy pipeline)
-- Sequencing advisor (technology selection logic)
-- Metabolomics viewer + MetaboLights client
-- Multi-omics integration (MOFA/MixOmics)
-- Assay recommender (full analytical technology suggestions)
-- Microscopy advisor (technique selector, sample prep, public image repos)
-- Proteomics advisor (DDA/DIA workflow, protein corona, STRING PPI queries)
-- Flow cytometry advisor (panel design, phospho-flow, FCS file import)
-- Network discovery (BFS co-author expansion)
-- Synthetic biology engine (parts browser, circuit designer)
-- Genetic engineering intelligence (editing strategy + delivery advisor)
-- Bioproduction planner (bioreactor + scale + cost)
-- ATMP pathway detail
-- Level 3-4 PK models
-- Full pathway analysis (KEGG/Reactome enrichment)
+### COMPLETED (Steps 1-11 + Tox)
+1.  [DONE] Fix __init__.py files — all submodules importable
+2.  [DONE] PubMed search wired to Literature tab
+3.  [DONE] Claude API client (llm_client.py) — Claude primary, GPT-4o fallback
+4.  [DONE] Researcher Network tab — manual add, feed, network graph
+5.  [DONE] Materials engine + AI knowledge cards
+6.  [DONE] Bio engine — GEO client + bulk transcriptomics viz (volcano, heatmap)
+            + CELLxGENE + Scanpy single-cell pipeline
+7.  [DONE] Drug engine — PubChem/ChEMBL/DrugBank + Level 1-3 PK models
+8.  [DONE] Regulatory engine — device classifier, ISO 10993, biocompat scorer,
+            pathway mapper, AI narrative
+9.  [DONE] Experimental design engine — cell/organism KB, DBTL tracker, roadmap generator,
+            AI advisor (5-tab UI)
+10. [DONE] Business Intelligence — market KB, stakeholder KB, SWOT engine,
+            strategic summary (6-tab UI with Claude synthesis)
+11. [DONE] Briefing generator — BriefingContext, ContextAssembler, BriefingGenerator,
+            10 Technical + 10 Executive sections, editable prompts, export
+12. [DONE] Toxicology tab — ToxServerManager, ADMET/CompTox/AOP/PBPK clients,
+            Server Control + CompTox + ADMET + AOP + PBPK sub-tabs,
+            live client injection into Regulatory workers
+
+### NEXT SESSION — Synthetic Biology tab
+- synthetic_biology_engine/ — iGEM, SynBioHub, Addgene clients
+- Parts browser + circuit designer (DBTL wizard)
+- Living materials integration layer
+- Genetic editor (editing strategy + delivery advisor)
+- Bioproduction planner
+- synbio_tab.py — wire all sub-tabs into main_window
 - Business Intelligence monitoring (active alerts)
 - Own IP strategy module
 - Own experimental data upload pipeline
