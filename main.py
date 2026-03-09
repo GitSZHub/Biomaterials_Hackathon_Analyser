@@ -11,6 +11,15 @@ from pathlib import Path
 # Add src directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
+# Load .env from repo root and config/.env (whichever exists)
+try:
+    from dotenv import load_dotenv
+    _root = Path(__file__).parent
+    load_dotenv(_root / ".env")
+    load_dotenv(_root / "config" / ".env")
+except ImportError:
+    pass  # python-dotenv not installed — use system env vars
+
 try:
     from PyQt6.QtWidgets import QApplication
     from PyQt6.QtCore import Qt

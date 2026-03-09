@@ -1,146 +1,139 @@
 # Biomaterials Hackathon Analyser — Session Memory
+**Last updated: 2026-03-09**
 
 ## Project Location
-`c:\Users\szaha\OneDrive\Documents\R_Py_Projects\Biomaterials_Hackathon_Analyser\`
-(root — files live directly here, not in a nested subdir)
+`c:\Users\szaha\Python_Projects\Biomaterials_Hackathon_Analyser\`
+Entry point: `python main.py` from repo root (adds `src/` to sys.path).
 
 ## Current Status
-**BUILD PHASE. Steps 1-12 complete.**
-Full build across multiple sessions. See `ARCHITECTURE_DECISIONS.md` for all detail.
+**ALL STEPS COMPLETE. App is feature-complete, 0 import errors, launches cleanly.**
+12 UI tabs. 14 engine packages. All smoke tests pass.
 
-## Key Decisions Made
+---
 
-### Framework
-- PyQt6 desktop app (already scaffolded)
-- Python backend, SQLite + HDF5 storage
-- Plotly (interactive) + Matplotlib/Seaborn (publication figures)
-- Scanpy for single-cell analysis
+## How to Run
 
-### AI Integration
-- Claude PRIMARY, GPT-4o FALLBACK
-- Prompts VISIBLE and EDITABLE (Option C confirmed)
-- Briefing: Technical mode (teammates) + Executive mode (investors)
+```bash
+cd "c:\Users\szaha\Python_Projects\Biomaterials_Hackathon_Analyser"
+.venv\Scripts\activate
+python main.py
+```
 
-### Search Architecture
-- Option A: Literature = global topic search, Researcher Network = passive feed
-- Share same SQLite paper database
+API keys in `config/.env`:
+```
+ANTHROPIC_API_KEY=sk-ant-...          # Claude (primary AI)
+EPA_COMPTOX_API_KEY=...               # optional, CompTox enrichment only
+```
 
-### GEO / Transcriptomics
-- Full dataset download + local analysis (Option B)
-- Cached HDF5, background thread, progress bar
-- Single-cell readiness from day one (CELLxGENE, Scanpy)
-- Matrigel as baseline — persistent caveat banner always shown
+DO NOT run `pip install -r requirements.txt` — broken entries. Install only:
+```bash
+pip install PyQt6 qtawesome pandas numpy scipy matplotlib python-dotenv
+```
 
-### Biocompatibility Scoring
-- Options B + C: user data + AI structural analogy prediction
-- Confidence tier: own data > in vivo > in vitro primary > cell lines > AI prediction
-- BiocCompatScorer: 40% CompTox + 30% ADMET + 30% AOP (enriched when MCP servers running)
+---
 
-### Project Level Context
-- Project-scoped: target tissue, resources, regulatory aim, material set at creation
-- Every module reads project context and filters accordingly
-
-## Modules — Built Status
+## Modules Built Status
 
 | # | Module | Backend | UI Tab | Notes |
 |---|--------|---------|--------|-------|
-| 1 | Literature Engine | BUILT | BUILT | PubMed, DOI, knowledge extractor |
-| 2 | Researcher Network | BUILT | BUILT | manual add, feed, graph |
-| 3 | Materials Engine | BUILT | BUILT | topic tree, AI cards, comparison |
-| 4 | Bio Engine | BUILT | BUILT | GEO, CELLxGENE, Scanpy; metabolomics/proteomics/flow NOT YET |
-| 5 | Drug Engine | BUILT | BUILT | PubChem/ChEMBL/DrugBank, Level 1-3 PK |
-| 6 | Experimental Engine | BUILT | BUILT | cell/organism KB, DBTL tracker, roadmap |
-| 7 | Regulatory Engine | BUILT | BUILT | device classifier, ISO 10993, biocompat, pathway, AI narrative |
-| 8 | AI Engine | BUILT | — | llm_client, prompt templates, knowledge cards |
-| 9 | Business Intelligence | BUILT | BUILT | market KB, stakeholders, SWOT, Claude synthesis |
-| 10 | Briefing Generator | BUILT | BUILT | flagship — 10 tech + 10 exec sections, editable prompts |
-| 11 | Tox Engine | BUILT | BUILT | ADMET/CompTox/AOP/PBPK MCP servers, server control panel |
-| 12 | Synthetic Biology | NOT YET | NOT YET | next priority |
-| 13 | Data Management | BUILT (basic) | NOT YET | ProjectContext, DB, CRUD |
+| 1 | Literature Engine | BUILT | BUILT | PubMed, researcher tracker, seeds 3 researchers |
+| 2 | Researcher Network | BUILT | BUILT | manual add, PubMed sync, network graph |
+| 3 | Materials Engine | BUILT | BUILT | 26-node topic tree, AI cards, comparison, seeds 5 materials |
+| 4 | Bio Engine | BUILT | BUILT | GEO query, transcriptomics, volcano plots |
+| 5 | Drug Engine | BUILT | BUILT | PubChem/ChEMBL, Level 1-3 PK curves |
+| 6 | Experimental Engine | BUILT | BUILT | cell/organism KB, DBTL tracker, assay wizard |
+| 7 | Regulatory Engine | BUILT | BUILT | device classifier, ISO 10993 (via tox_engine), pathway mapper |
+| 8 | AI Engine | BUILT | -- | llm_client (urllib, no SDK), paper summariser, knowledge cards |
+| 9 | Business Intelligence | BUILT | BUILT | market KB, stakeholders, SWOT, Claude synthesis, patent browser |
+| 10 | Briefing Generator | BUILT | BUILT | 10 tech + 10 exec sections, editable prompts, MD/HTML/TXT export |
+| 11 | Tox Engine | BUILT | BUILT | ADMET/CompTox/AOP/PBPK MCP servers (ports 8082-8085) |
+| 12 | Synthetic Biology | BUILT | BUILT | iGEM/SynBioHub/Addgene, DBTL wizard, genetic editor, living materials |
+| 13 | Simulation Engine | BUILT | BUILT | ODE degradation (6 polymers) + drug release (7 models) |
+| 14 | Data Management | BUILT | -- | 31-table SQLite (WAL), ProjectContext, CRUD, findings/search history |
 
-## Tox Engine Architecture (critical — added last session)
+---
 
-tox_engine/ — 8 files, all built:
-- `server_manager.py` — ToxServerManager singleton, 4 MCP servers
-  - admet:8082, comptox:8083, aop:8084, pbpk:8085
-  - get_tox_manager() in tox_tab.py returns singleton
-- `mcp_client.py` — MCPClient.call_tool()
-- `admet_client.py` — predict_admet(smiles), render_structure(smiles), no API key
-- `comptox_client.py` — lookup_by_name(), EPA_COMPTOX_API_KEY required
-- `aop_client.py` — map_chemical_to_aops(), AOP-Wiki, no API key
-- `pbpk_client.py` — load_model(.pkml), run_simulation(), OSP Suite, no API key
-- `iso10993_assessor.py` — ISO10993Assessor(comptox, aop, admet)
-- `workers.py` — all QThread workers pre-built
+## Tab Order (main_window.py)
 
-ToxTab wired to RegulatoryTab via:
-  `main_window.py`: `regulatory_tab.set_tox_tab(self.tox_tab)`
-  regulatory_tab workers call `self._get_live_clients()` before running
+1. Literature (fa5s.book)
+2. Researcher Network (fa5s.users)
+3. Materials Modeling (fa5s.cogs)
+4. Business Intelligence (fa5s.chart-line)
+5. Bio Analysis (fa5s.flask)
+6. Drug Delivery (fa5s.pills)
+7. Regulatory (fa5s.shield-alt)
+8. Experimental Design (fa5s.flask)
+9. Synthetic Biology (fa5s.dna)
+10. Toxicology (fa5s.exclamation-triangle)
+11. Briefing Generator (fa5s.star)
+12. Simulation (fa5s.chart-bar)
 
-## Tab Order in main_window.py
-Literature → Researcher Network → Materials Modeling → Business Intelligence →
-Bio Analysis → Drug Delivery → Regulatory → Experimental Design → Toxicology → Briefing Generator
+---
 
-## Regulatory Scenarios (4 defined)
-- A: Inert scaffold -> Class I/II/III device pathway
-- B: Scaffold + drug -> Drug-device combination, PMA + CDER/CBER
-- C: Scaffold + engineered living cells -> ATMP (gene/cell therapy pathway)
-- D: Engineered organism produces material -> GMO manufacturing regs only
+## Key Architecture Facts
 
-## Key Researchers
-- Jos Malda (UMC Utrecht) — musculoskeletal biofab, MEW, VBP
-- Riccardo Levato (UMC Utrecht) — GRACE, ERC Consolidator (pancreas VBP)
-- Miguel Castilho (TU/e) — Xolography, bone regeneration
-- Dutch biofab cluster — dominant 2025 theme: volumetric bioprinting
+- DB: `projects` table (plural). `materials.class` column (not `material_class`).
+- Connection: `with get_db().connection() as conn:` context manager
+- AI: `llm_client.py` uses `urllib.request` -- no `anthropic` package needed to start
+- Seeds: Called by tabs on first visit (`seed_if_empty()`), not from main.py
+- Tab wiring: `regulatory_tab.set_tox_tab()`, `briefing_tab.set_module_tabs()`, `synbio_tab.scenario_c_changed` signal
+- Findings: `FindingsWidget` in each tab -- persists notes to `module_findings` table per project+module
+- `pyrightconfig.json` at repo root -- required for Pylance import resolution
+- `cell_models_db.py` exports `CellModel`, not `CellModelsDB`
 
-## Next Session Priority
-1. Synthetic Biology tab (iGEM, SynBioHub, Addgene, DBTL wizard, living materials,
-   genetic editor, delivery advisor, bioproduction planner)
-2. Assay Recommender + Microscopy Advisor + Proteomics Advisor + Flow Cytometry Advisor
+---
 
-## How to Run the App
+## Simulation Engine (added 2026-03-09)
 
-### Setup (first time)
-```bash
-cd "c:\Users\szaha\OneDrive\Documents\R_Py_Projects\Biomaterials_Hackathon_Analyser"
-python -m venv .venv
-.venv\Scripts\activate
-pip install PyQt6 qtawesome anthropic requests pandas numpy matplotlib plotly python-dotenv
-python main.py
-```
+`simulation_engine/degradation_models.py`:
+- 6 presets: PLGA 50:50 (~40d fragment), PLGA 75:25 (~106d), PLA (~320d half-life), PCL (>1yr), Chitosan, Alginate
+- 4 ODE model types: autocatalytic (Batycky), first-order, enzymatic (Michaelis-Menten), ionic erosion
+- Arrhenius (Ea=75 kJ/mol) + pH corrections
 
-### Subsequent runs
-```bash
-cd "c:\Users\szaha\OneDrive\Documents\R_Py_Projects\Biomaterials_Hackathon_Analyser"
-.venv\Scripts\activate
-python main.py
-```
+`simulation_engine/drug_release.py`:
+- 7 models: Zero Order, First Order, Higuchi, Korsmeyer-Peppas, Weibull, Hixson-Crowell, Biexponential
+- Returns t50, t80, burst fraction (1h), release rate curve
 
-### Install packages on-demand (NOT from requirements.txt)
-requirements.txt has broken/heavy packages — install only as needed:
-- `pip install PyQt6 qtawesome` — GUI (required)
-- `pip install anthropic` — Claude API (required for AI features)
-- `pip install requests pandas numpy` — core data (required)
-- `pip install matplotlib plotly` — visualisation
-- `pip install python-dotenv` — reads config/.env for API keys
-- `pip install biopython pubchempy` — bio/drug modules
-- `pip install scanpy anndata` — single-cell analysis
-- `pip install pdfplumber pymupdf` — PDF extraction
+---
 
-DO NOT run `pip install -r requirements.txt` — it will fail on:
-- `rdkit` (needs conda or wheel, not pip)
-- `pymatgen`, `matminer` (large, slow, not needed yet)
-- `comptox-mcp`, `aop-mcp`, `pbpk-mcp` (don't exist on PyPI — placeholders)
-- `textract`, `psycopg2-binary`, `pymongo` (unnecessary)
+## Tox Engine Ports
 
-### API keys
-Put in `config/.env`:
-```
-ANTHROPIC_API_KEY=sk-ant-...
-EPA_COMPTOX_API_KEY=...   # optional, CompTox enrichment only
-```
+- admet: 8082
+- comptox: 8083 (requires EPA_COMPTOX_API_KEY)
+- aop: 8084
+- pbpk: 8085
+
+---
+
+## Regulatory Scenarios
+
+- A: Inert scaffold -- Class I/II/III device
+- B: Scaffold + drug -- Drug-device combination, PMA
+- C: Scaffold + engineered living cells -- ATMP
+- D: Engineered organism manufactures material -- GMO regs
+
+---
+
+## Key Researchers (seeded)
+
+- Jos Malda (UMC Utrecht) -- musculoskeletal biofab, MEW, VBP
+- Riccardo Levato (UMC Utrecht) -- GRACE project, ERC Consolidator, pancreas VBP
+- Miguel Castilho (TU/e) -- Xolography, bone regeneration
+
+---
+
+## Non-Critical Missing Files (nothing imports these)
+
+- `drug_engine/drugbank_client.py`
+- `business_intelligence/clinicaltrials_client.py`
+- `business_intelligence/patent_analyzer.py`
+- `utils/export.py` (briefing_tab handles MD/HTML/TXT inline)
+- `regulatory_engine/iso10993.py` (covered by tox_engine/iso10993_assessor.py)
+
+---
 
 ## User Preferences
+
 - No emojis
 - Concise responses
-- Architecture-first before coding
 - Platform: Windows 11, VSCode, bash shell
