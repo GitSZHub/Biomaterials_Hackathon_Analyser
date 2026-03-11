@@ -5,7 +5,7 @@ Manages API keys, database connections, and application settings
 
 import os
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, List, Any
 import json
 
 class Config:

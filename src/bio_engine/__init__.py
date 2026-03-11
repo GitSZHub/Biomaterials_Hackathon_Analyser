@@ -1,4 +1,4 @@
-"""Bio Engine -- GEO, transcriptomics, single-cell, tissue interaction."""
+"""Bio Engine -- GEO, transcriptomics, pathway enrichment, metabolomics, single-cell."""
 
 from .geo_client import GEOClient
 from .transcriptomics import (
@@ -8,6 +8,98 @@ from .transcriptomics import (
     DEGResult,
     VolcanoPoint,
 )
+from .pathway_analysis import (
+    run_enrichment,
+    run_enrichment_split,
+    run_preranked_gsea,
+    genes_from_deg_result,
+    EnrichmentResult,
+    GSEAResult,
+    PathwayReport,
+)
+from .metabolomics_client import MetabolomicsClient
+from .metabolomics import (
+    run_differential_analysis,
+    run_pca,
+    run_umap,
+    load_metabolomics_table,
+    make_demo_metabolomics,
+    DifferentialResult,
+    MetaboliteHit,
+    PCAResult,
+    UMAPResult,
+)
+from .deconvolution import (
+    deconvolve_markers,
+    deconvolve_nnls,
+    deconvolve_svr,
+    build_signature_from_markers,
+    make_demo_bulk_with_composition,
+    DeconvolutionResult,
+    MARKER_SETS,
+)
+from .flow_data_processor import (
+    load_fcs,
+    gate_threshold,
+    gate_range,
+    gate_polygon,
+    compute_population_stats,
+    make_demo_flow_data,
+    FlowData,
+    GatingResult,
+    PopulationStats,
+    PANEL_TEMPLATES,
+)
+from .multiomics_integrator import (
+    run_joint_pathway_enrichment,
+    run_cross_omics_correlation,
+    run_mofa_lite,
+    make_demo_multiomics,
+    JointPathwayHit,
+    JointEnrichmentReport,
+    CrossCorrelation,
+    MOFAResult,
+    JOINT_PATHWAY_DB,
+)
+from .sequencing_advisor import (
+    recommend_technology,
+    get_technology,
+    list_technologies,
+    get_decision_tree,
+    SequencingTechnology,
+    TechRecommendation,
+    TechAdvisorReport,
+    TECHNOLOGY_DATABASE,
+)
+from .target_lookup import (
+    lookup_target,
+    list_known_targets,
+    get_target_info,
+    CompoundHit,
+    TargetInfo,
+    TargetLookupResult,
+)
+from .pathway_intervention import (
+    plan_intervention,
+    get_editing_strategies,
+    is_essential,
+    InterventionStrategy,
+    InterventionPlan,
+)
+from .tissue_interaction import (
+    model_tissue_response,
+    get_interface_zones,
+    get_material_outcome,
+    list_known_materials,
+    get_phase_by_name,
+    get_biomarkers_for_timepoint,
+    TissueResponseTimeline,
+    ResponsePhase,
+    InterfaceZone,
+    RESPONSE_PHASES,
+    INTERFACE_ZONES,
+    MATRIGEL_CAVEAT,
+)
 
 __all__ = [
     "GEOClient",
@@ -16,4 +108,62 @@ __all__ = [
     "make_demo_matrix",
     "DEGResult",
     "VolcanoPoint",
+    "run_enrichment",
+    "run_enrichment_split",
+    "run_preranked_gsea",
+    "genes_from_deg_result",
+    "EnrichmentResult",
+    "GSEAResult",
+    "PathwayReport",
+    "MetabolomicsClient",
+    "run_differential_analysis",
+    "run_pca",
+    "run_umap",
+    "load_metabolomics_table",
+    "make_demo_metabolomics",
+    "DifferentialResult",
+    "MetaboliteHit",
+    "PCAResult",
+    "UMAPResult",
+    "deconvolve_markers",
+    "deconvolve_nnls",
+    "deconvolve_svr",
+    "build_signature_from_markers",
+    "make_demo_bulk_with_composition",
+    "DeconvolutionResult",
+    "MARKER_SETS",
+    "load_fcs",
+    "gate_threshold",
+    "gate_range",
+    "gate_polygon",
+    "compute_population_stats",
+    "make_demo_flow_data",
+    "FlowData",
+    "GatingResult",
+    "PopulationStats",
+    "PANEL_TEMPLATES",
+    "run_joint_pathway_enrichment",
+    "run_cross_omics_correlation",
+    "run_mofa_lite",
+    "make_demo_multiomics",
+    "JointPathwayHit",
+    "JointEnrichmentReport",
+    "CrossCorrelation",
+    "MOFAResult",
+    "JOINT_PATHWAY_DB",
+    # Sequencing Advisor
+    "recommend_technology", "get_technology", "list_technologies",
+    "get_decision_tree", "SequencingTechnology", "TechRecommendation",
+    "TechAdvisorReport", "TECHNOLOGY_DATABASE",
+    # Tissue Interaction
+    "model_tissue_response", "get_interface_zones", "get_material_outcome",
+    "list_known_materials", "get_phase_by_name", "get_biomarkers_for_timepoint",
+    "TissueResponseTimeline", "ResponsePhase", "InterfaceZone",
+    "RESPONSE_PHASES", "INTERFACE_ZONES", "MATRIGEL_CAVEAT",
+    # Target Lookup
+    "lookup_target", "list_known_targets", "get_target_info",
+    "CompoundHit", "TargetInfo", "TargetLookupResult",
+    # Pathway Intervention
+    "plan_intervention", "get_editing_strategies", "is_essential",
+    "InterventionStrategy", "InterventionPlan",
 ]

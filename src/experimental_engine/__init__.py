@@ -26,6 +26,29 @@ from .organism_models_db import (
 )
 from .experimental_designer import ExperimentalDesigner, ExperimentalRoadmap, RoadmapStage
 from .dbtl_tracker import DBTLTracker, DBTLCycle
+from .assay_recommender import (
+    recommend_assays, AssayRecommendation, AssayStack,
+    ASSAY_DATABASE, get_assays_for_question, get_assays_by_category, get_assays_by_tier,
+)
+from .microscopy_advisor import (
+    recommend_technique, MicroscopyRecommendation, MicroscopyReport,
+    TECHNIQUE_DATABASE, IMAGE_DATABASES, get_techniques_for_question, get_sample_prep,
+)
+from .proteomics_client import (
+    ProteomicsClient, PPIEdge, PPINetwork,
+    recommend_workflow, ProtWorkflowRec, PRIDEDataset,
+    classify_corona, get_integrin_ligands,
+    PROTEOMICS_TYPES, CORONA_PROTEINS, MATRISOME_CATEGORIES, INTEGRIN_LIGANDS,
+)
+from .flow_cytometry_advisor import (
+    recommend_panel, design_panel, PanelRecommendation, PanelDesign, MarkerSpec,
+    TECHNIQUE_VARIANTS, FLUOROCHROME_DB, APPLICATION_KB, FLOW_REPOSITORIES,
+    get_panels_for_question,
+)
+from .protocol_client import (
+    search_protocols, get_protocol_by_id, get_protocols_for_assay,
+    list_local_protocols, Protocol, ProtocolSearchResult,
+)
 
 __all__ = [
     "CellModel", "ALL_CELL_MODELS",
@@ -37,4 +60,22 @@ __all__ = [
     "get_alternatives", "get_organism_model",
     "ExperimentalDesigner", "ExperimentalRoadmap", "RoadmapStage",
     "DBTLTracker", "DBTLCycle",
+    # Assay Recommender
+    "recommend_assays", "AssayRecommendation", "AssayStack",
+    "ASSAY_DATABASE", "get_assays_for_question", "get_assays_by_category", "get_assays_by_tier",
+    # Microscopy Advisor
+    "recommend_technique", "MicroscopyRecommendation", "MicroscopyReport",
+    "TECHNIQUE_DATABASE", "IMAGE_DATABASES", "get_techniques_for_question", "get_sample_prep",
+    # Proteomics Client
+    "ProteomicsClient", "PPIEdge", "PPINetwork",
+    "recommend_workflow", "ProtWorkflowRec", "PRIDEDataset",
+    "classify_corona", "get_integrin_ligands",
+    "PROTEOMICS_TYPES", "CORONA_PROTEINS", "MATRISOME_CATEGORIES", "INTEGRIN_LIGANDS",
+    # Flow Cytometry Advisor
+    "recommend_panel", "design_panel", "PanelRecommendation", "PanelDesign", "MarkerSpec",
+    "TECHNIQUE_VARIANTS", "FLUOROCHROME_DB", "APPLICATION_KB", "FLOW_REPOSITORIES",
+    "get_panels_for_question",
+    # Protocol Client
+    "search_protocols", "get_protocol_by_id", "get_protocols_for_assay",
+    "list_local_protocols", "Protocol", "ProtocolSearchResult",
 ]

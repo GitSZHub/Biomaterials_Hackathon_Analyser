@@ -25,6 +25,7 @@ from .experimental_tab import ExperimentalTab
 from .briefing_tab import BriefingTab
 from .tox_tab import ToxTab
 from .synbio_tab import SynBioTab
+from .simulation_tab import SimulationTab
 
 
 class _NewProjectDialog(QDialog):
@@ -220,6 +221,7 @@ class MainWindow(QMainWindow):
         self.briefing_tab     = BriefingTab()
         self.tox_tab          = ToxTab()
         self.synbio_tab       = SynBioTab()
+        self.simulation_tab   = SimulationTab()
 
         # Wire ToxTab -> RegulatoryTab so live MCP clients enrich ISO 10993 / biocompat
         self.regulatory_tab.set_tox_tab(self.tox_tab)
@@ -249,6 +251,8 @@ class MainWindow(QMainWindow):
                                qta.icon('fa5s.flask'),        "Experimental Design")
         self.tab_widget.addTab(self.synbio_tab,
                                qta.icon('fa5s.dna'),          "Synthetic Biology")
+        self.tab_widget.addTab(self.simulation_tab,
+                               qta.icon('fa5s.chart-area'),   "Simulation")
         self.tab_widget.addTab(self.tox_tab,
                                qta.icon('fa5s.exclamation-triangle'),      "Toxicology")
         self.tab_widget.addTab(self.briefing_tab,

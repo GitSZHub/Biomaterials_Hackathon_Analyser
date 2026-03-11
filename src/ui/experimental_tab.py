@@ -1,12 +1,16 @@
 """
 Experimental Design Tab
 =======================
-Five sub-tabs:
+Nine sub-tabs:
   1. Design Wizard      -- generate a staged roadmap for tissue + scenario
   2. Cell Models        -- browse / filter in vitro cell model knowledge base
   3. Organism Models    -- browse / filter in vivo organism model knowledge base
   4. DBTL Tracker       -- record and review Design-Build-Test-Learn iterations
-  5. AI Advisor         -- Claude interprets roadmap and advises on 3Rs / priorities
+  5. Assay Recommender  -- question -> prioritised assay stack with cost/tier
+  6. Microscopy         -- technique selection, sample prep, image databases
+  7. Proteomics         -- workflow design, corona classifier, integrin-ligand lookup
+  8. Flow Cytometry     -- panel design, fluorochrome assignment, application guidance
+  9. AI Advisor         -- Claude interprets roadmap and advises on 3Rs / priorities
 """
 
 from __future__ import annotations
@@ -156,6 +160,11 @@ class ExperimentalTab(QWidget):
         tabs.addTab(self._build_cell_tab(),      qta.icon('fa5s.circle'),   "Cell Models")
         tabs.addTab(self._build_organism_tab(),  qta.icon('fa5s.paw'),         "Organism Models")
         tabs.addTab(self._build_dbtl_tab(),      qta.icon('fa5s.sync'),     "DBTL Tracker")
+        tabs.addTab(self._build_assay_tab(),     qta.icon('fa5s.vials'),    "Assay Recommender")
+        tabs.addTab(self._build_microscopy_tab(), qta.icon('fa5s.microscope'), "Microscopy")
+        tabs.addTab(self._build_proteomics_tab(), qta.icon('fa5s.dna'),     "Proteomics")
+        tabs.addTab(self._build_flow_advisor_tab(), qta.icon('fa5s.water'), "Flow Cytometry")
+        tabs.addTab(self._build_protocol_tab(),  qta.icon('fa5s.clipboard-list'), "Protocols")
         tabs.addTab(self._build_ai_tab(),        qta.icon('fa5s.lightbulb'), "AI Advisor")
         layout.addWidget(tabs)
 
@@ -731,7 +740,584 @@ class ExperimentalTab(QWidget):
             )
             self._refresh_dbtl()
 
-    # ── Sub-tab 5: AI Advisor ──────────────────────────────────────────────────
+    # ── Sub-tab 5: Assay Recommender ─────────────────────────────────────────
+
+    def _build_assay_tab(self) -> QWidget:
+        w = QWidget()
+        layout = QVBoxLayout(w)
+
+        # Controls
+        ctrl = QHBoxLayout()
+        ctrl.addWidget(QLabel("Research question:"))
+        self._assay_question = QLineEdit()
+        self._assay_question.setPlaceholderText(
+            "e.g. Is my material cytotoxic? / What metabolic pathways are active?"
+        )
+        ctrl.addWidget(self._assay_question)
+
+        ctrl.addWidget(QLabel("Budget:"))
+        self._assay_budget = QComboBox()
+        self._assay_budget.addItems(["low", "medium", "high"])
+        self._assay_budget.setCurrentIndex(1)
+        ctrl.addWidget(self._assay_budget)
+
+        ctrl.addWidget(QLabel("Max tier:"))
+        self._assay_tier = QComboBox()
+        self._assay_tier.addItems(["1 (basic)", "2 (intermediate)", "3 (advanced)"])
+        self._assay_tier.setCurrentIndex(2)
+        ctrl.addWidget(self._assay_tier)
+
+        rec_btn = QPushButton("Recommend Assays")
+        rec_btn.setIcon(qta.icon('fa5s.vials'))
+        rec_btn.clicked.connect(self._run_assay_recommend)
+        ctrl.addWidget(rec_btn)
+        layout.addLayout(ctrl)
+
+        self._assay_summary = QLabel("Enter a research question and click Recommend.")
+        self._assay_summary.setWordWrap(True)
+        self._assay_summary.setStyleSheet("color:#495057; font-style:italic;")
+        layout.addWidget(self._assay_summary)
+
+        self._assay_table = QTableWidget(0, 7)
+        self._assay_table.setHorizontalHeaderLabels([
+            "#", "Assay", "Tier", "Cost", "Turnaround", "Equipment", "Readout",
+        ])
+        self._assay_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self._assay_table.setAlternatingRowColors(True)
+        self._assay_table.horizontalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.ResizeToContents
+        )
+        layout.addWidget(self._assay_table)
+        return w
+
+    def _run_assay_recommend(self):
+        q = self._assay_question.text().strip()
+        if not q:
+            self._assay_summary.setText("Please enter a research question.")
+            return
+        try:
+            from experimental_engine.assay_recommender import recommend_assays
+            budget = self._assay_budget.currentText()
+            max_tier = self._assay_tier.currentIndex() + 1
+            stack = recommend_assays(q, budget=budget, max_tier=max_tier)
+            self._assay_summary.setText(stack.summary.replace("\n", " | "))
+            self._assay_table.setRowCount(0)
+            for r in stack.recommendations:
+                row = self._assay_table.rowCount()
+                self._assay_table.insertRow(row)
+                self._assay_table.setItem(row, 0, QTableWidgetItem(str(r.priority)))
+                self._assay_table.setItem(row, 1, QTableWidgetItem(r.assay_name))
+                self._assay_table.setItem(row, 2, QTableWidgetItem(str(r.tier)))
+                self._assay_table.setItem(row, 3, QTableWidgetItem(r.cost_flag))
+                self._assay_table.setItem(row, 4, QTableWidgetItem(r.turnaround))
+                self._assay_table.setItem(row, 5, QTableWidgetItem(r.equipment))
+                self._assay_table.setItem(row, 6, QTableWidgetItem(r.readout))
+        except Exception as e:
+            self._assay_summary.setText(f"Error: {e}")
+
+    # ── Sub-tab 6: Microscopy Advisor ─────────────────────────────────────────
+
+    def _build_microscopy_tab(self) -> QWidget:
+        w = QWidget()
+        layout = QVBoxLayout(w)
+
+        ctrl = QHBoxLayout()
+        ctrl.addWidget(QLabel("Question:"))
+        self._micro_question = QLineEdit()
+        self._micro_question.setPlaceholderText(
+            "e.g. What does my scaffold look like at the nanoscale?"
+        )
+        ctrl.addWidget(self._micro_question)
+
+        ctrl.addWidget(QLabel("Sample:"))
+        self._micro_sample = QComboBox()
+        self._micro_sample.addItems([
+            "(any)", "hydrogel", "electrospun scaffold", "metal implant",
+            "organoid", "tissue section", "nanoparticle",
+        ])
+        ctrl.addWidget(self._micro_sample)
+
+        rec_btn = QPushButton("Recommend")
+        rec_btn.setIcon(qta.icon('fa5s.microscope'))
+        rec_btn.clicked.connect(self._run_microscopy_recommend)
+        ctrl.addWidget(rec_btn)
+        layout.addLayout(ctrl)
+
+        self._micro_prep_notes = QLabel("")
+        self._micro_prep_notes.setWordWrap(True)
+        self._micro_prep_notes.setStyleSheet("color:#856404; background:#fff3cd; padding:4px; border-radius:3px;")
+        self._micro_prep_notes.hide()
+        layout.addWidget(self._micro_prep_notes)
+
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+
+        self._micro_table = QTableWidget(0, 5)
+        self._micro_table.setHorizontalHeaderLabels([
+            "#", "Technique", "Resolution", "Cost", "Accessibility",
+        ])
+        self._micro_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self._micro_table.setAlternatingRowColors(True)
+        self._micro_table.currentCellChanged.connect(self._on_micro_select)
+        splitter.addWidget(self._micro_table)
+
+        self._micro_detail = QTextEdit()
+        self._micro_detail.setReadOnly(True)
+        self._micro_detail.setPlaceholderText("Select a technique to see details.")
+        splitter.addWidget(self._micro_detail)
+
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 1)
+        layout.addWidget(splitter)
+
+        db_label = QLabel("<b>Public Image Databases:</b>")
+        layout.addWidget(db_label)
+        self._micro_db_label = QLabel("")
+        self._micro_db_label.setWordWrap(True)
+        self._micro_db_label.setStyleSheet("color:#495057;")
+        try:
+            from experimental_engine.microscopy_advisor import IMAGE_DATABASES
+            db_text = " | ".join(f"{d['name']}" for d in IMAGE_DATABASES)
+            self._micro_db_label.setText(db_text)
+        except Exception:
+            pass
+        layout.addWidget(self._micro_db_label)
+
+        self._micro_recs = []
+        return w
+
+    def _run_microscopy_recommend(self):
+        q = self._micro_question.text().strip()
+        if not q:
+            return
+        sample = self._micro_sample.currentText()
+        if sample == "(any)":
+            sample = ""
+        try:
+            from experimental_engine.microscopy_advisor import recommend_technique
+            report = recommend_technique(q, sample_type=sample)
+            self._micro_recs = report.recommendations
+            self._micro_table.setRowCount(0)
+            for r in report.recommendations:
+                row = self._micro_table.rowCount()
+                self._micro_table.insertRow(row)
+                self._micro_table.setItem(row, 0, QTableWidgetItem(str(r.priority)))
+                self._micro_table.setItem(row, 1, QTableWidgetItem(r.variant or r.technique))
+                self._micro_table.setItem(row, 2, QTableWidgetItem(r.resolution))
+                self._micro_table.setItem(row, 3, QTableWidgetItem(r.cost))
+                self._micro_table.setItem(row, 4, QTableWidgetItem(r.accessibility))
+            self._micro_table.horizontalHeader().setSectionResizeMode(
+                QHeaderView.ResizeMode.ResizeToContents
+            )
+            if report.sample_prep_notes:
+                self._micro_prep_notes.setText("\n".join(report.sample_prep_notes))
+                self._micro_prep_notes.show()
+            else:
+                self._micro_prep_notes.hide()
+        except Exception as e:
+            self._micro_detail.setPlainText(f"Error: {e}")
+
+    def _on_micro_select(self, row, col, prev_row, prev_col):
+        if row < 0 or row >= len(self._micro_recs):
+            return
+        r = self._micro_recs[row]
+        lines = [
+            f"<h3>{r.variant or r.technique}</h3>",
+            f"<b>Purpose:</b> {r.purpose}",
+            f"<b>Resolution:</b> {r.resolution}",
+            f"<b>Sample state:</b> {r.sample_state}",
+            f"<b>Readout:</b> {r.readout}",
+            f"<b>Cost:</b> {r.cost} | <b>Accessibility:</b> {r.accessibility}",
+        ]
+        if r.sample_prep:
+            lines.append("<b>Sample preparation:</b><ol>")
+            for step in r.sample_prep:
+                lines.append(f"<li>{step}</li>")
+            lines.append("</ol>")
+        if r.advantages:
+            lines.append("<b>Advantages:</b> " + ", ".join(r.advantages))
+        if r.limitations:
+            lines.append("<b>Limitations:</b> " + ", ".join(r.limitations))
+        if r.biomaterial_notes:
+            lines.append(f"<b>Biomaterial notes:</b> <i>{r.biomaterial_notes}</i>")
+        self._micro_detail.setHtml("<br>".join(lines))
+
+    # ── Sub-tab 7: Proteomics Advisor ─────────────────────────────────────────
+
+    def _build_proteomics_tab(self) -> QWidget:
+        w = QWidget()
+        layout = QVBoxLayout(w)
+
+        ctrl = QHBoxLayout()
+        ctrl.addWidget(QLabel("Research question:"))
+        self._prot_question = QLineEdit()
+        self._prot_question.setPlaceholderText(
+            "e.g. protein corona / signalling pathways / ECM remodelling"
+        )
+        ctrl.addWidget(self._prot_question)
+        rec_btn = QPushButton("Recommend Workflow")
+        rec_btn.setIcon(qta.icon('fa5s.dna'))
+        rec_btn.clicked.connect(self._run_prot_recommend)
+        ctrl.addWidget(rec_btn)
+        layout.addLayout(ctrl)
+
+        self._prot_workflow_text = QTextEdit()
+        self._prot_workflow_text.setReadOnly(True)
+        self._prot_workflow_text.setMaximumHeight(200)
+        self._prot_workflow_text.setPlaceholderText("Workflow recommendations will appear here.")
+        layout.addWidget(self._prot_workflow_text)
+
+        integ_box = QHBoxLayout()
+        integ_box.addWidget(QLabel("Integrin genes expressed:"))
+        self._prot_integrins = QLineEdit()
+        self._prot_integrins.setPlaceholderText("e.g. ITGB1, ITGA5, ITGAV, ITGB3")
+        integ_box.addWidget(self._prot_integrins)
+        lig_btn = QPushButton("Find ECM Ligands")
+        lig_btn.clicked.connect(self._run_integrin_lookup)
+        integ_box.addWidget(lig_btn)
+        layout.addLayout(integ_box)
+
+        corona_box = QHBoxLayout()
+        corona_box.addWidget(QLabel("Corona proteins:"))
+        self._prot_corona = QLineEdit()
+        self._prot_corona.setPlaceholderText("e.g. Vitronectin, Albumin, Complement C3, Fibrinogen")
+        corona_box.addWidget(self._prot_corona)
+        corona_btn = QPushButton("Classify Corona")
+        corona_btn.clicked.connect(self._run_corona_classify)
+        corona_box.addWidget(corona_btn)
+        layout.addLayout(corona_box)
+
+        self._prot_results = QTextEdit()
+        self._prot_results.setReadOnly(True)
+        self._prot_results.setPlaceholderText(
+            "Integrin-ligand matches and corona classification results appear here."
+        )
+        layout.addWidget(self._prot_results)
+        return w
+
+    def _run_prot_recommend(self):
+        q = self._prot_question.text().strip()
+        if not q:
+            return
+        try:
+            from experimental_engine.proteomics_client import recommend_workflow
+            recs = recommend_workflow(q)
+            lines = []
+            for r in recs:
+                lines.append(f"<h3>{r.name}</h3>")
+                lines.append(f"<b>Description:</b> {r.description}")
+                lines.append(f"<b>Acquisition:</b> {r.acquisition} | <b>Quantification:</b> {r.quantification}")
+                if r.enrichment:
+                    lines.append(f"<b>Enrichment:</b> {r.enrichment}")
+                lines.append(f"<b>Instruments:</b> {', '.join(r.instruments)}")
+                lines.append(f"<b>Analysis tools:</b> {', '.join(r.analysis_tools)}")
+                lines.append(f"<b>Cost:</b> {r.cost_flag} | <b>Turnaround:</b> {r.turnaround}")
+                if r.sample_prep:
+                    lines.append("<b>Sample prep:</b><ol>")
+                    for s in r.sample_prep:
+                        lines.append(f"<li>{s}</li>")
+                    lines.append("</ol>")
+                if r.notes:
+                    lines.append(f"<b>Note:</b> <i>{r.notes}</i>")
+                lines.append("<hr>")
+            self._prot_workflow_text.setHtml("<br>".join(lines))
+        except Exception as e:
+            self._prot_workflow_text.setPlainText(f"Error: {e}")
+
+    def _run_integrin_lookup(self):
+        text = self._prot_integrins.text().strip()
+        if not text:
+            return
+        genes = [g.strip() for g in text.replace(";", ",").split(",") if g.strip()]
+        try:
+            from experimental_engine.proteomics_client import get_integrin_ligands
+            result = get_integrin_ligands(genes)
+            if not result:
+                self._prot_results.setPlainText("No integrin heterodimers matched.")
+                return
+            lines = ["<h3>Integrin-ECM Ligand Matches</h3>"]
+            for het, ligs in result.items():
+                lines.append(f"<b>{het}:</b> {', '.join(ligs)}")
+            self._prot_results.setHtml("<br>".join(lines))
+        except Exception as e:
+            self._prot_results.setPlainText(f"Error: {e}")
+
+    def _run_corona_classify(self):
+        text = self._prot_corona.text().strip()
+        if not text:
+            return
+        proteins = [p.strip() for p in text.replace(";", ",").split(",") if p.strip()]
+        try:
+            from experimental_engine.proteomics_client import classify_corona
+            classified = classify_corona(proteins)
+            lines = ["<h3>Corona Protein Classification</h3>"]
+            flag_colors = {
+                "pro_adhesion": "#28a745", "anti_adhesion": "#fd7e14",
+                "immune_activation": "#dc3545", "inflammatory": "#dc3545",
+                "passivation": "#6c757d", "targeting": "#007bff", "unknown": "#adb5bd",
+            }
+            for flag, prots in classified.items():
+                if prots:
+                    color = flag_colors.get(flag, "#000")
+                    label = flag.replace("_", " ").title()
+                    lines.append(
+                        f'<span style="color:{color}"><b>{label}:</b></span> {", ".join(prots)}'
+                    )
+            self._prot_results.setHtml("<br>".join(lines))
+        except Exception as e:
+            self._prot_results.setPlainText(f"Error: {e}")
+
+    # ── Sub-tab 8: Flow Cytometry Advisor ─────────────────────────────────────
+
+    def _build_flow_advisor_tab(self) -> QWidget:
+        w = QWidget()
+        layout = QVBoxLayout(w)
+
+        ctrl = QHBoxLayout()
+        ctrl.addWidget(QLabel("Question:"))
+        self._flow_adv_question = QLineEdit()
+        self._flow_adv_question.setPlaceholderText(
+            "e.g. Is my material activating macrophages? / MSC identity check"
+        )
+        ctrl.addWidget(self._flow_adv_question)
+
+        ctrl.addWidget(QLabel("Channels:"))
+        self._flow_adv_channels = QSpinBox()
+        self._flow_adv_channels.setRange(4, 50)
+        self._flow_adv_channels.setValue(8)
+        ctrl.addWidget(self._flow_adv_channels)
+
+        rec_btn = QPushButton("Recommend Panel")
+        rec_btn.setIcon(qta.icon('fa5s.water'))
+        rec_btn.clicked.connect(self._run_flow_adv_recommend)
+        ctrl.addWidget(rec_btn)
+        layout.addLayout(ctrl)
+
+        self._flow_adv_technique = QLabel("")
+        self._flow_adv_technique.setWordWrap(True)
+        self._flow_adv_technique.setStyleSheet("font-weight:bold; color:#2E86AB;")
+        layout.addWidget(self._flow_adv_technique)
+
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+
+        self._flow_adv_panel_table = QTableWidget(0, 3)
+        self._flow_adv_panel_table.setHorizontalHeaderLabels(["Panel", "Colours", "Fixation"])
+        self._flow_adv_panel_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self._flow_adv_panel_table.setAlternatingRowColors(True)
+        self._flow_adv_panel_table.currentCellChanged.connect(self._on_flow_panel_select)
+        splitter.addWidget(self._flow_adv_panel_table)
+
+        right_w = QWidget()
+        right_layout = QVBoxLayout(right_w)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+
+        self._flow_adv_markers = QTableWidget(0, 4)
+        self._flow_adv_markers.setHorizontalHeaderLabels([
+            "Marker", "Fluorochrome", "Purpose", "Surface",
+        ])
+        self._flow_adv_markers.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self._flow_adv_markers.setAlternatingRowColors(True)
+        right_layout.addWidget(self._flow_adv_markers)
+
+        self._flow_adv_notes = QTextEdit()
+        self._flow_adv_notes.setReadOnly(True)
+        self._flow_adv_notes.setMaximumHeight(120)
+        self._flow_adv_notes.setPlaceholderText("Protocol notes and controls appear here.")
+        right_layout.addWidget(self._flow_adv_notes)
+
+        splitter.addWidget(right_w)
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 2)
+        layout.addWidget(splitter)
+
+        self._flow_adv_panels = []
+        self._flow_adv_rec = None
+        return w
+
+    def _run_flow_adv_recommend(self):
+        q = self._flow_adv_question.text().strip()
+        if not q:
+            return
+        n_ch = self._flow_adv_channels.value()
+        try:
+            from experimental_engine.flow_cytometry_advisor import recommend_panel
+            rec = recommend_panel(q, instrument_channels=n_ch)
+            self._flow_adv_rec = rec
+            self._flow_adv_panels = rec.panels
+            self._flow_adv_technique.setText(f"Recommended: {rec.technique}")
+
+            self._flow_adv_panel_table.setRowCount(0)
+            for p in rec.panels:
+                row = self._flow_adv_panel_table.rowCount()
+                self._flow_adv_panel_table.insertRow(row)
+                self._flow_adv_panel_table.setItem(row, 0, QTableWidgetItem(p.panel_name))
+                self._flow_adv_panel_table.setItem(row, 1, QTableWidgetItem(str(p.n_colours)))
+                self._flow_adv_panel_table.setItem(row, 2, QTableWidgetItem(p.fixation or "none"))
+
+            self._flow_adv_panel_table.horizontalHeader().setSectionResizeMode(
+                QHeaderView.ResizeMode.ResizeToContents
+            )
+
+            notes = []
+            if rec.controls:
+                notes.append("<b>Controls:</b><ul>")
+                for c in rec.controls:
+                    notes.append(f"<li>{c}</li>")
+                notes.append("</ul>")
+            if rec.acquisition_notes:
+                notes.append("<b>Acquisition:</b><ul>")
+                for n in rec.acquisition_notes:
+                    notes.append(f"<li>{n}</li>")
+                notes.append("</ul>")
+            self._flow_adv_notes.setHtml("".join(notes))
+
+            if rec.panels:
+                self._flow_adv_panel_table.setCurrentCell(0, 0)
+
+        except Exception as e:
+            self._flow_adv_technique.setText(f"Error: {e}")
+
+    def _on_flow_panel_select(self, row, col, prev_row, prev_col):
+        if row < 0 or row >= len(self._flow_adv_panels):
+            return
+        panel = self._flow_adv_panels[row]
+        self._flow_adv_markers.setRowCount(0)
+        for m in panel.markers:
+            r = self._flow_adv_markers.rowCount()
+            self._flow_adv_markers.insertRow(r)
+            self._flow_adv_markers.setItem(r, 0, QTableWidgetItem(m.marker))
+            self._flow_adv_markers.setItem(r, 1, QTableWidgetItem(m.fluorochrome))
+            self._flow_adv_markers.setItem(r, 2, QTableWidgetItem(m.purpose))
+            surface_text = "surface" if m.is_surface else "intracellular"
+            self._flow_adv_markers.setItem(r, 3, QTableWidgetItem(surface_text))
+
+        self._flow_adv_markers.horizontalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.ResizeToContents
+        )
+
+        if panel.protocol_notes:
+            notes = "<b>Protocol notes:</b><ul>"
+            for n in panel.protocol_notes:
+                notes += f"<li>{n}</li>"
+            notes += "</ul>"
+            if panel.fixation:
+                notes += f"<b>Fixation:</b> {panel.fixation}<br>"
+            if panel.permeabilisation:
+                notes += f"<b>Permeabilisation:</b> {panel.permeabilisation}"
+            self._flow_adv_notes.setHtml(notes)
+
+    # ── Sub-tab: Protocols ───────────────────────────────────────────────────
+
+    def _build_protocol_tab(self) -> QWidget:
+        w = QWidget()
+        layout = QVBoxLayout(w)
+
+        layout.addWidget(QLabel(
+            "<b>Protocol Library:</b> Find published protocols for biomaterials experiments."
+        ))
+
+        # Search row
+        search_row = QHBoxLayout()
+        search_row.addWidget(QLabel("Search:"))
+        self._prot_search = QLineEdit()
+        self._prot_search.setPlaceholderText("e.g. viability, SEM, scaffold, RNA extraction")
+        search_row.addWidget(self._prot_search)
+
+        prot_btn = QPushButton("Search")
+        prot_btn.setIcon(qta.icon('fa5s.search'))
+        prot_btn.clicked.connect(self._run_protocol_search)
+        search_row.addWidget(prot_btn)
+
+        all_btn = QPushButton("Show All Templates")
+        all_btn.clicked.connect(self._show_all_protocols)
+        search_row.addWidget(all_btn)
+        layout.addLayout(search_row)
+
+        # Results splitter
+        splitter = QSplitter(Qt.Orientation.Vertical)
+
+        # Protocol list table
+        self._prot_table = QTableWidget(0, 4)
+        self._prot_table.setHorizontalHeaderLabels([
+            "Title", "Source", "Difficulty", "Duration",
+        ])
+        self._prot_table.horizontalHeader().setSectionResizeMode(
+            0, QHeaderView.ResizeMode.Stretch
+        )
+        self._prot_table.setSelectionBehavior(
+            QTableWidget.SelectionBehavior.SelectRows
+        )
+        self._prot_table.currentCellChanged.connect(self._on_protocol_select)
+        splitter.addWidget(self._prot_table)
+
+        # Protocol detail
+        self._prot_detail = QTextEdit()
+        self._prot_detail.setReadOnly(True)
+        self._prot_detail.setPlaceholderText("Select a protocol to see full details and steps.")
+        splitter.addWidget(self._prot_detail)
+
+        splitter.setSizes([250, 350])
+        layout.addWidget(splitter)
+
+        # Store search results
+        self._prot_results: list = []
+
+        return w
+
+    def _run_protocol_search(self):
+        query = self._prot_search.text().strip()
+        if not query:
+            return
+        try:
+            from src.experimental_engine.protocol_client import search_protocols
+            result = search_protocols(query, source="local")
+            self._prot_results = result.protocols
+            self._populate_protocol_table(result.protocols)
+        except Exception as e:
+            self._prot_detail.setText(f"Error: {e}")
+
+    def _show_all_protocols(self):
+        try:
+            from src.experimental_engine.protocol_client import list_local_protocols
+            protocols = list_local_protocols()
+            self._prot_results = protocols
+            self._populate_protocol_table(protocols)
+        except Exception as e:
+            self._prot_detail.setText(f"Error: {e}")
+
+    def _populate_protocol_table(self, protocols):
+        self._prot_table.setRowCount(0)
+        for p in protocols:
+            row = self._prot_table.rowCount()
+            self._prot_table.insertRow(row)
+            self._prot_table.setItem(row, 0, QTableWidgetItem(p.title))
+            self._prot_table.setItem(row, 1, QTableWidgetItem(p.source))
+            self._prot_table.setItem(row, 2, QTableWidgetItem(p.difficulty))
+            self._prot_table.setItem(row, 3, QTableWidgetItem(p.duration))
+
+    def _on_protocol_select(self, row, *_args):
+        if row < 0 or row >= len(self._prot_results):
+            return
+        p = self._prot_results[row]
+        html = f"<h3>{p.title}</h3>"
+        html += f"<p>{p.description}</p>"
+        html += f"<p><b>Difficulty:</b> {p.difficulty} | <b>Duration:</b> {p.duration}</p>"
+        if p.categories:
+            html += f"<p><b>Categories:</b> {', '.join(p.categories)}</p>"
+        if p.steps:
+            html += "<h4>Steps</h4><ol>"
+            for step in p.steps:
+                html += f"<li>{step}</li>"
+            html += "</ol>"
+        if p.materials_needed:
+            html += "<h4>Materials Needed</h4><ul>"
+            for m in p.materials_needed:
+                html += f"<li>{m}</li>"
+            html += "</ul>"
+        if p.url:
+            html += f"<p><b>Source:</b> <a href='{p.url}'>{p.url}</a></p>"
+        self._prot_detail.setHtml(html)
+
+    # ── Sub-tab: AI Advisor ──────────────────────────────────────────────────
 
     def _build_ai_tab(self) -> QWidget:
         w = QWidget()

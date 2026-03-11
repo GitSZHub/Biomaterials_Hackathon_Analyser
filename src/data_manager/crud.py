@@ -716,6 +716,57 @@ def list_geo_datasets(tissue: Optional[str] = None) -> List[Dict]:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Metabolomics datasets
+# ──────────────────────────────────────────────────────────────────────────────
+
+def upsert_metabolomics_dataset(source: str, accession: str, title: str,
+                                 organism: str, tissue: str, platform: str,
+                                 file_path: Optional[str] = None,
+                                 culture_condition: Optional[str] = None) -> None:
+    db = get_db()
+    with db.connection() as conn:
+        # Check if exists by source + accession
+        existing = conn.execute(
+            "SELECT id FROM metabolomics_datasets WHERE source=? AND accession=?",
+            (source, accession),
+        ).fetchone()
+        if existing:
+            conn.execute(
+                """UPDATE metabolomics_datasets
+                   SET title=?, organism=?, tissue=?, platform=?,
+                       file_path=COALESCE(?, file_path),
+                       culture_condition=?, cached_date=CURRENT_TIMESTAMP
+                   WHERE source=? AND accession=?""",
+                (title, organism, tissue, platform, file_path,
+                 culture_condition, source, accession),
+            )
+        else:
+            conn.execute(
+                """INSERT INTO metabolomics_datasets
+                       (source, accession, title, organism, tissue, platform,
+                        file_path, culture_condition, cached_date)
+                   VALUES (?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)""",
+                (source, accession, title, organism, tissue, platform,
+                 file_path, culture_condition),
+            )
+
+
+def list_metabolomics_datasets(tissue: Optional[str] = None) -> List[Dict]:
+    db = get_db()
+    with db.connection() as conn:
+        if tissue:
+            rows = conn.execute(
+                "SELECT * FROM metabolomics_datasets WHERE tissue LIKE ? ORDER BY cached_date DESC",
+                (f"%{tissue}%",),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM metabolomics_datasets ORDER BY cached_date DESC"
+            ).fetchall()
+    return _rows_to_dicts(rows)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Stakeholders
 # ──────────────────────────────────────────────────────────────────────────────
 
