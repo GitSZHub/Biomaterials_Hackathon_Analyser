@@ -257,6 +257,8 @@ class MainWindow(QMainWindow):
                                qta.icon('fa5s.exclamation-triangle'),      "Toxicology")
         self.tab_widget.addTab(self.briefing_tab,
                                qta.icon('fa5s.star'),         "Briefing Generator")
+        self.tab_widget.addTab(self.simulation_tab,
+                               qta.icon('fa5s.chart-bar'),   "Simulation")
 
         main_layout.addWidget(self.tab_widget)
 
@@ -432,7 +434,7 @@ class MainWindow(QMainWindow):
             self.literature_tab, self.researcher_tab, self.materials_tab,
             self.business_tab, self.bio_tab, self.drug_tab,
             self.regulatory_tab, self.experimental_tab,
-            self.tox_tab, self.synbio_tab, self.briefing_tab,
+            self.tox_tab, self.synbio_tab, self.briefing_tab, self.simulation_tab,
         ]:
             try:
                 tab.set_project_id(self._project_id)

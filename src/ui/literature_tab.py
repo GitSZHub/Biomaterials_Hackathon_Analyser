@@ -8,7 +8,8 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
                              QLineEdit, QPushButton, QTextEdit, QLabel,
                              QComboBox, QTableWidget, QTableWidgetItem,
                              QSplitter, QFrame, QProgressBar, QTabWidget,
-                             QSpinBox, QMessageBox, QHeaderView, QApplication)
+                             QSpinBox, QMessageBox, QHeaderView, QApplication,
+                             QMenu, QInputDialog)
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QFont, QColor
 import qtawesome as qta
@@ -249,8 +250,14 @@ class LiteratureTab(QWidget):
         self.clear_btn.setIcon(qta.icon('fa5s.times'))
         self.clear_btn.clicked.connect(self.clear_results)
 
+        self.flagged_btn = QPushButton("  Show Flagged")
+        self.flagged_btn.setIcon(qta.icon('fa5s.bookmark', color='#A23B72'))
+        self.flagged_btn.setToolTip("Show all papers flagged for briefing")
+        self.flagged_btn.clicked.connect(self.show_flagged_papers)
+
         btn_layout.addWidget(self.search_btn)
         btn_layout.addWidget(self.clear_btn)
+        btn_layout.addWidget(self.flagged_btn)
         btn_layout.addStretch()
         grid.addLayout(btn_layout, 3, 2, 1, 2)
 
@@ -298,9 +305,9 @@ class LiteratureTab(QWidget):
         left_layout.addLayout(results_header)
 
         self.results_table = QTableWidget()
-        self.results_table.setColumnCount(5)
+        self.results_table.setColumnCount(6)
         self.results_table.setHorizontalHeaderLabels(
-            ["Title", "Authors", "Journal", "Year", "PMID"])
+            ["Title", "Authors", "Journal", "Year", "PMID", "★"])
         self.results_table.setSelectionBehavior(
             QTableWidget.SelectionBehavior.SelectRows)
         self.results_table.setEditTriggers(
@@ -309,8 +316,13 @@ class LiteratureTab(QWidget):
             0, QHeaderView.ResizeMode.Stretch)
         self.results_table.horizontalHeader().setSectionResizeMode(
             1, QHeaderView.ResizeMode.ResizeToContents)
+        self.results_table.horizontalHeader().setSectionResizeMode(
+            5, QHeaderView.ResizeMode.Fixed)
+        self.results_table.setColumnWidth(5, 28)
         self.results_table.setAlternatingRowColors(True)
         self.results_table.itemSelectionChanged.connect(self.on_paper_selected)
+        self.results_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.results_table.customContextMenuRequested.connect(self._on_table_context_menu)
         left_layout.addWidget(self.results_table)
 
         splitter.addWidget(left_panel)
@@ -366,6 +378,12 @@ class LiteratureTab(QWidget):
         self.flag_btn.setEnabled(False)
         self.flag_btn.clicked.connect(self.toggle_briefing_flag)
 
+        self.track_author_btn = QPushButton("  Track Author")
+        self.track_author_btn.setIcon(qta.icon('fa5s.user-plus'))
+        self.track_author_btn.setEnabled(False)
+        self.track_author_btn.setToolTip("Add an author of this paper to the Researcher Network")
+        self.track_author_btn.clicked.connect(self._on_track_author_btn)
+
         self.flagged_count_label = QLabel("")
         self.flagged_count_label.setStyleSheet("color: #A23B72; font-weight: bold; font-size: 11px;")
         self._refresh_flag_count()
@@ -373,6 +391,7 @@ class LiteratureTab(QWidget):
         action_layout.addWidget(self.summarise_btn)
         action_layout.addWidget(self.pubmed_btn)
         action_layout.addWidget(self.flag_btn)
+        action_layout.addWidget(self.track_author_btn)
         action_layout.addWidget(self.flagged_count_label)
         details_layout.addLayout(action_layout)
 
@@ -542,7 +561,15 @@ class LiteratureTab(QWidget):
             "Check your internet connection and NCBI API key in config.")
 
     def _populate_table(self, papers: list):
+        try:
+            from data_manager.crud import get_flagged_pmids
+            flagged = get_flagged_pmids()
+        except Exception:
+            flagged = set()
+
         self.results_table.setRowCount(len(papers))
+        _flag_bg = QColor("#fff3cd")   # amber tint for flagged rows
+
         for row, paper in enumerate(papers):
             authors = paper.get("authors", [])
             author_str = ", ".join(authors[:2])
@@ -550,12 +577,25 @@ class LiteratureTab(QWidget):
                 author_str += " et al."
 
             year = paper.get("publication_date", "")[:4] if paper.get("publication_date") else str(paper.get("year", ""))
+            pmid  = str(paper.get("pmid", ""))
+            is_flagged = pmid in flagged
 
             self.results_table.setItem(row, 0, QTableWidgetItem(paper.get("title", "")))
             self.results_table.setItem(row, 1, QTableWidgetItem(author_str))
             self.results_table.setItem(row, 2, QTableWidgetItem(paper.get("journal", "")))
             self.results_table.setItem(row, 3, QTableWidgetItem(year))
-            self.results_table.setItem(row, 4, QTableWidgetItem(str(paper.get("pmid", ""))))
+            self.results_table.setItem(row, 4, QTableWidgetItem(pmid))
+            star_item = QTableWidgetItem("★" if is_flagged else "")
+            star_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            if is_flagged:
+                star_item.setForeground(QColor("#A23B72"))
+            self.results_table.setItem(row, 5, star_item)
+
+            if is_flagged:
+                for col in range(6):
+                    item = self.results_table.item(row, col)
+                    if item:
+                        item.setBackground(_flag_bg)
 
         self.results_table.resizeRowsToContents()
 
@@ -569,6 +609,22 @@ class LiteratureTab(QWidget):
         self.paper_meta_label.setText("")
         self.paper_abstract.clear()
         self._set_paper_actions_enabled(False)
+
+    def show_flagged_papers(self):
+        """Load all flagged papers from DB and display them in the table."""
+        try:
+            from data_manager.crud import get_flagged_papers
+            papers = get_flagged_papers()
+        except Exception as e:
+            self.status_label.setText(f"Could not load flagged papers: {e}")
+            return
+        if not papers:
+            self.status_label.setText("No papers flagged yet. Select a paper and click 'Flag for Briefing'.")
+            return
+        self._papers = papers
+        self._populate_table(papers)
+        self.results_count.setText(f"{len(papers)} flagged paper(s)")
+        self.status_label.setText("Showing flagged papers only — run a new search to see full results.")
 
     def sort_results(self, sort_by: str):
         if not self._papers:
@@ -627,6 +683,7 @@ class LiteratureTab(QWidget):
     def _set_paper_actions_enabled(self, enabled: bool):
         self.pubmed_btn.setEnabled(enabled)
         self.flag_btn.setEnabled(enabled)
+        self.track_author_btn.setEnabled(enabled)
         # Enable summarise only if API key is configured
         try:
             from ai_engine.llm_client import get_client
@@ -685,6 +742,7 @@ class LiteratureTab(QWidget):
         except Exception as e:
             self.status_label.setText(f"Flag error: {e}")
         self._refresh_flag_count()
+        self._refresh_row_flag(self._current_pmid)
 
     def _refresh_flag_count(self):
         try:
@@ -693,6 +751,32 @@ class LiteratureTab(QWidget):
             self.flagged_count_label.setText(f"{n} flagged" if n else "")
         except Exception:
             pass
+
+    def _refresh_row_flag(self, pmid: str):
+        """Update star column and row colour for a single PMID without reloading the table."""
+        try:
+            from data_manager.crud import get_flagged_pmids
+            flagged = get_flagged_pmids()
+        except Exception:
+            return
+        is_flagged = pmid in flagged
+        flag_bg    = QColor("#fff3cd")
+        normal_bg  = QColor(0, 0, 0, 0)   # transparent = default alternating colour
+
+        for row in range(self.results_table.rowCount()):
+            pmid_item = self.results_table.item(row, 4)
+            if pmid_item and pmid_item.text() == pmid:
+                star_item = self.results_table.item(row, 5)
+                if star_item:
+                    star_item.setText("★" if is_flagged else "")
+                    star_item.setForeground(QColor("#A23B72") if is_flagged
+                                            else QColor("#000000"))
+                bg = flag_bg if is_flagged else normal_bg
+                for col in range(6):
+                    item = self.results_table.item(row, col)
+                    if item:
+                        item.setBackground(bg)
+                break
 
     def _update_flag_btn_state(self, pmid: str):
         """Set flag button appearance to match current flag state for this paper."""
@@ -746,3 +830,79 @@ class LiteratureTab(QWidget):
         import webbrowser
         if hasattr(self, '_current_pmid') and self._current_pmid:
             webbrowser.open(f"https://pubmed.ncbi.nlm.nih.gov/{self._current_pmid}/")
+
+    # ── Track author ──────────────────────────────────────────────────
+
+    def _get_selected_paper(self):
+        """Return the paper dict for the currently selected table row, or None."""
+        row = self.results_table.currentRow()
+        if row < 0 or row >= len(self._papers):
+            return None
+        pmid_item = self.results_table.item(row, 4)
+        if not pmid_item:
+            return None
+        pmid = pmid_item.text()
+        return next((p for p in self._papers if str(p.get("pmid", "")) == pmid), None)
+
+    def _on_track_author_btn(self):
+        paper = self._get_selected_paper()
+        if not paper:
+            return
+        self._pick_and_track_author(paper)
+
+    def _on_table_context_menu(self, pos):
+        row = self.results_table.rowAt(pos.y())
+        if row < 0 or row >= len(self._papers):
+            return
+        self.results_table.selectRow(row)
+        menu = QMenu(self)
+        track_action = menu.addAction(qta.icon('fa5s.user-plus'), "Track Author...")
+        menu.addSeparator()
+        pubmed_action = menu.addAction(qta.icon('fa5s.external-link-alt'), "Open in PubMed")
+        action = menu.exec(self.results_table.viewport().mapToGlobal(pos))
+        if action == track_action:
+            paper = self._get_selected_paper()
+            if paper:
+                self._pick_and_track_author(paper)
+        elif action == pubmed_action:
+            self.open_in_pubmed()
+
+    def _pick_and_track_author(self, paper: dict):
+        """Show author picker then open AddResearcherDialog pre-filled."""
+        authors = paper.get("authors", [])
+        if not authors:
+            QMessageBox.information(self, "No authors", "No author list available for this paper.")
+            return
+
+        if len(authors) == 1:
+            chosen = authors[0]
+        else:
+            chosen, ok = QInputDialog.getItem(
+                self, "Pick Author",
+                f"Authors of:\n{paper.get('title', '')[:80]}\n\nSelect author to track:",
+                authors, 0, False,
+            )
+            if not ok:
+                return
+
+        # Open AddResearcherDialog pre-filled with the chosen name
+        from .researcher_network_tab import AddResearcherDialog
+        dlg = AddResearcherDialog(self)
+        dlg.name_input.setText(chosen)
+        dlg._auto_query(chosen)   # trigger PubMed query auto-fill
+        if dlg.exec() != dlg.Accepted:
+            return
+
+        values = dlg.get_values()
+        if not values["name"]:
+            return
+        try:
+            from literature_engine.researcher_tracker import ResearcherTracker
+            rid = ResearcherTracker().add_researcher(**values)
+            QMessageBox.information(
+                self, "Researcher added",
+                f"{values['name']} added to Researcher Network (id={rid}).\n\n"
+                "Go to the Researcher Network tab to sync their papers.",
+            )
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to add researcher:\n{e}")
