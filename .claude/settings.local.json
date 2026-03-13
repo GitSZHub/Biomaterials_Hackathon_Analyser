@@ -3,7 +3,8 @@
     "allow": [
       "WebFetch(domain:github.com)",
       "WebFetch(domain:www.biorxiv.org)",
-      "Bash(gh repo list ToxMCP --json name,description,url)"
+      "Bash(gh repo list ToxMCP --json name,description,url)",
+      "WebSearch"
     ]
   }
 }
